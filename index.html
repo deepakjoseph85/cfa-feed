@@ -8,41 +8,41 @@
         .container { display: flex; justify-content: center; gap: 60px; }
         .day-column { flex: 1; max-width: 250px; }
         .label { font-size: 1.8em; margin-bottom: 20px; color: #ccc; }
-        /* The Map Shape */
         .map-box { 
             width: 150px; height: 100px; margin: 0 auto 20px auto; 
-            background-color: #444; border-radius: 10px;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 0.8em; font-weight: bold;
+            border-radius: 10px; display: flex; align-items: center; justify-content: center;
+            font-size: 0.9em; font-weight: bold; color: black;
         }
         .rating { font-size: 2em; font-weight: 900; letter-spacing: 1px; text-transform: uppercase; }
         
-        /* CFA Colors */
+        /* CFA Official Colors */
         .MODERATE { color: #78be20; } 
         .HIGH { color: #ffb81c; } 
         .EXTREME { color: #e03c31; } 
-        .CATASTROPHIC { color: #ffffff; background-color: #000000; padding: 5px; }
+        .CATASTROPHIC { color: white; background-color: #000; border: 2px solid red; }
 
         .bg-MODERATE { background-color: #78be20; }
         .bg-HIGH { background-color: #ffb81c; }
         .bg-EXTREME { background-color: #e03c31; }
+        .bg-CATASTROPHIC { background-color: #000; border: 2px solid white; }
     </style>
 </head>
 <body>
     <div class="header">South West Fire Danger</div>
-    <div class="container" id="content">Fetching latest data...</div>
+    <div id="content" class="container">Loading live CFA data...</div>
 
     <script>
         async function fetchFeed() {
             const rssUrl = "https://www.cfa.vic.gov.au/cfa/rssfeed/southwest-firedistrict_rss.xml";
-            // Using a different proxy to ensure it gets through
-            const proxy = "https://api.allorigins.win/get?url=" + encodeURIComponent(rssUrl);
+            // Using a different proxy service (Corsproxy.io)
+            const proxy = "https://corsproxy.io/?" + encodeURIComponent(rssUrl);
             
             try {
                 const response = await fetch(proxy);
-                const json = await response.json();
+                if (!response.ok) throw new Error('Network response was not ok');
+                const text = await response.text();
                 const parser = new DOMParser();
-                const xml = parser.parseFromString(json.contents, "text/xml");
+                const xml = parser.parseFromString(text, "text/xml");
                 const items = xml.querySelectorAll("item");
                 
                 let html = '';
@@ -50,28 +50,32 @@
                 
                 for (let i = 0; i < 3; i++) {
                     const ratingText = items[i].querySelector("description").textContent.trim().toUpperCase();
+                    
                     let colorClass = "HIGH";
                     if (ratingText.includes("EXTREME")) colorClass = "EXTREME";
                     if (ratingText.includes("MODERATE")) colorClass = "MODERATE";
                     if (ratingText.includes("CATASTROPHIC")) colorClass = "CATASTROPHIC";
+                    if (ratingText.includes("NO RATING")) colorClass = "MODERATE";
 
                     html += `
                         <div class="day-column">
                             <div class="label">${labels[i]}</div>
                             <div class="map-box bg-${colorClass}">
-                                <span style="color:black">SOUTH WEST</span>
+                                SOUTH WEST
                             </div>
                             <div class="rating ${colorClass}">${ratingText}</div>
                         </div>`;
                 }
                 document.getElementById('content').innerHTML = html;
             } catch (err) {
-                document.getElementById('content').innerHTML = "Unable to reach CFA. Check connection.";
+                console.error(err);
+                document.getElementById('content').innerHTML = "Unable to reach CFA. Check connection or try refreshing.";
             }
         }
 
         fetchFeed();
-        setInterval(fetchFeed, 1800000); // Update every 30 mins
+        // Refresh every 30 minutes
+        setInterval(fetchFeed, 1800000);
     </script>
 </body>
 </html>
