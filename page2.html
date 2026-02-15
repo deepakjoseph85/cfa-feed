@@ -1,79 +1,92 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <style>
-        body { background-color: black; color: white; font-family: 'Segoe UI', Arial, sans-serif; padding: 30px; text-align: center; }
-        .header { font-size: 2.2em; font-weight: bold; margin-bottom: 40px; border-bottom: 1px solid #444; padding-bottom: 10px; }
-        .container { display: flex; justify-content: center; gap: 50px; }
-        .day-column { flex: 1; max-width: 220px; }
-        .label { font-size: 1.6em; margin-bottom: 15px; color: #ccc; }
+        body { background-color: black; color: white; font-family: 'Segoe UI', Arial, sans-serif; padding: 20px; text-align: center; overflow: hidden; }
+        .header { font-size: 2em; font-weight: bold; margin-bottom: 30px; }
+        .container { display: flex; justify-content: center; gap: 30px; align-items: flex-start; }
+        .day-column { flex: 1; max-width: 200px; display: flex; flex-direction: column; align-items: center; }
+        .label { font-size: 1.5em; margin-bottom: 10px; color: #ccc; }
         
-        /* Map Area */
-        .map-box { 
-            width: 140px; height: 90px; margin: 0 auto 15px auto; 
-            border-radius: 8px; display: flex; align-items: center; justify-content: center;
-            font-size: 0.8em; font-weight: bold; color: black;
+        /* Map Silhouette Styles */
+        .map-icon {
+            width: 120px; height: 80px; margin-bottom: 15px;
+            background-size: contain; background-repeat: no-repeat; background-position: center;
+            /* Using a generic SVG path as a placeholder for the South West district shape */
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 60"><path d="M10,30 L30,10 L70,10 L90,30 L70,50 L30,50 Z" fill="white"/></svg>');
         }
         
-        .rating { font-size: 1.8em; font-weight: 900; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 10px; }
+        .rating { font-size: 1.6em; font-weight: 900; text-transform: uppercase; margin-bottom: 10px; }
         
-        /* Note Section */
-        .footer-note { margin-top: 50px; font-size: 1.1em; color: #888; font-style: italic; border-top: 1px solid #333; padding-top: 20px; }
-        .timestamp { font-weight: bold; color: #bbb; }
+        /* Total Fire Ban logic */
+        .tfb-notice { font-size: 1em; font-weight: bold; line-height: 1.2; display: none; margin-top: 10px; }
+        .tfb-icon { color: #e03c31; margin-right: 5px; }
+        .tfb-active { display: block; }
+        .restrictions { color: #2e5bff; text-decoration: underline; font-size: 0.9em; margin-top: 5px; }
 
-        /* CFA Official Colors */
+        /* Color Mapping */
         .MODERATE { color: #78be20; } .HIGH { color: #ffb81c; } .EXTREME { color: #e03c31; }
-        .bg-MODERATE { background-color: #78be20; } .bg-HIGH { background-color: #ffb81c; } .bg-EXTREME { background-color: #e03c31; }
+        .map-MODERATE { filter: invert(61%) sepia(54%) saturate(515%) hue-rotate(42deg) brightness(94%) contrast(91%); }
+        .map-HIGH { filter: invert(79%) sepia(65%) saturate(558%) hue-rotate(352deg) brightness(101%) contrast(105%); }
+        .map-EXTREME { filter: invert(34%) sepia(85%) saturate(2256%) hue-rotate(345deg) brightness(91%) contrast(97%); }
+
+        .footer { margin-top: 40px; font-size: 0.9em; color: #666; font-style: italic; border-top: 1px solid #222; padding-top: 10px; }
     </style>
 </head>
 <body>
-    <div class="header">South West Fire Danger</div>
-    <div id="content" class="container">Connecting to CFA...</div>
-    <div id="footer" class="footer-note"></div>
+    <div class="header">Fire Danger Ratings</div>
+    <div id="content" class="container">Loading Data...</div>
+    <div id="footer" class="footer"></div>
 
     <script>
-        async function fetchFeed() {
+        async function updateDisplay() {
             const rssUrl = "https://www.cfa.vic.gov.au/cfa/rssfeed/southwest-firedistrict_rss.xml";
             const proxy = "https://corsproxy.io/?" + encodeURIComponent(rssUrl);
             
             try {
                 const response = await fetch(proxy);
                 const text = await response.text();
-                const parser = new DOMParser();
-                const xml = parser.parseFromString(text, "text/xml");
+                const xml = new DOMParser().parseFromString(text, "text/xml");
                 
-                // Get the time the forecast was issued
-                const pubDate = xml.querySelector("pubDate") ? xml.querySelector("pubDate").textContent : "Recently";
-                
+                const pubDate = xml.querySelector("pubDate") ? xml.querySelector("pubDate").textContent : "N/A";
                 const items = xml.querySelectorAll("item");
                 let html = '';
                 const labels = ["Today", "Tomorrow", "Overmorrow"];
                 
-                for (let i = 0; i < 3; i++) {
-                    const ratingText = items[i].querySelector("description").textContent.trim().toUpperCase();
-                    let colorClass = "HIGH";
-                    if (ratingText.includes("EXTREME")) colorClass = "EXTREME";
-                    if (ratingText.includes("MODERATE")) colorClass = "MODERATE";
-                    if (ratingText.includes("NO RATING")) colorClass = "MODERATE";
+                items.forEach((item, i) => {
+                    if (i > 2) return;
+                    const desc = item.querySelector("description").textContent.toUpperCase();
+                    const title = item.querySelector("title").textContent.toUpperCase();
+                    
+                    let rating = "MODERATE";
+                    if (desc.includes("EXTREME")) rating = "EXTREME";
+                    else if (desc.includes("HIGH")) rating = "HIGH";
+
+                    // Check for Total Fire Ban in the title or description
+                    const isTFB = title.includes("TOTAL FIRE BAN") || desc.includes("TOTAL FIRE BAN");
 
                     html += `
                         <div class="day-column">
                             <div class="label">${labels[i]}</div>
-                            <div class="map-box bg-${colorClass}">SOUTH WEST</div>
-                            <div class="rating ${colorClass}">${ratingText}</div>
+                            <div class="map-icon map-${rating}"></div>
+                            <div class="rating ${rating}">${rating}</div>
+                            <div class="tfb-notice ${isTFB ? 'tfb-active' : ''}" style="color: ${rating === 'EXTREME' ? '#e03c31' : '#ffb81c'}">
+                                <span class="tfb-icon">🚫</span> DISPLAYS WHEN TOTAL FIRE BAN IN FORCE
+                                <div class="restrictions">RESTRICTIONS MAY APPLY</div>
+                            </div>
                         </div>`;
-                }
+                });
                 
                 document.getElementById('content').innerHTML = html;
-                document.getElementById('footer').innerHTML = `Forecast issued: <span class="timestamp">${pubDate}</span>`;
+                document.getElementById('footer').innerHTML = `Forecast Issued: ${pubDate}`;
             } catch (err) {
-                document.getElementById('content').innerHTML = "Unable to reach CFA.";
+                document.getElementById('content').innerHTML = "Error loading CFA data.";
             }
         }
 
-        fetchFeed();
-        setInterval(fetchFeed, 1800000); // Auto-update every 30 mins
+        updateDisplay();
+        setInterval(updateDisplay, 1800000);
     </script>
 </body>
 </html>
