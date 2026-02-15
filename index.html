@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { background-color: black; color: white; font-family: sans-serif; padding: 20px; overflow: hidden; }
+        .container { display: flex; gap: 40px; }
+        .day { text-align: left; }
+        .label { font-size: 1.2em; margin-bottom: 10px; color: #aaa; }
+        .rating { font-size: 1.5em; font-weight: bold; margin-top: 10px; }
+        .map-icon { width: 100px; height: 80px; background-size: contain; background-repeat: no-repeat; }
+        /* Official CFA Colors */
+        .MODERATE { color: #78be20; } .HIGH { color: #ffb81c; } .EXTREME { color: #e03c31; } .CATASTROPHIC { color: #000000; background: #e03c31; }
+    </style>
+</head>
+<body>
+    <h2 id="title">South West Fire Danger</h2>
+    <div class="container" id="content">Loading CFA Data...</div>
+
+    <script>
+        async function getCFA() {
+            const url = "https://www.cfa.vic.gov.au/cfa/rssfeed/southwest-firedistrict_rss.xml";
+            // Use a proxy to avoid CORS errors in the browser
+            const proxy = "https://api.allorigins.win/get?url=" + encodeURIComponent(url);
+            
+            try {
+                const response = await fetch(proxy);
+                const data = await response.json();
+                const parser = new DOMParser();
+                const xml = parser.parseFromString(data.contents, "text/xml");
+                const items = xml.querySelectorAll("item");
+                
+                let html = '';
+                const labels = ["Today", "Tomorrow", "Overmorrow"];
+                
+                for (let i = 0; i < 3; i++) {
+                    const rating = items[i].querySelector("description").textContent.toUpperCase();
+                    const colorClass = rating.includes("EXTREME") ? "EXTREME" : (rating.includes("HIGH") ? "HIGH" : "MODERATE");
+                    
+                    html += `<div class="day">
+                        <div class="label">${labels[i]}</div>
+                        <div class="map-icon" style="background-color: ${colorClass === 'EXTREME' ? '#e03c31' : (colorClass === 'HIGH' ? '#ffb81c' : '#78be20')}; mask: url(https://raw.githubusercontent.com/google/material-design-icons/master/src/social/public/materialicons/24px.svg) no-repeat center; -webkit-mask: url(https://raw.githubusercontent.com/google/material-design-icons/master/src/social/public/materialicons/24px.svg) no-repeat center;"></div>
+                        <div class="rating ${colorClass}">${rating}</div>
+                    </div>`;
+                }
+                document.getElementById('content').innerHTML = html;
+            } catch (e) {
+                document.getElementById('content').innerHTML = "Error loading feed.";
+            }
+        }
+        getCFA();
+        setInterval(getCFA, 3600000); // Refresh every hour
+    </script>
+</body>
+</html>
