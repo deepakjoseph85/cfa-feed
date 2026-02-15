@@ -2,26 +2,67 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>South West Fire Danger</title>
+    <title>CFA South West Dashboard</title>
     <style>
         body { background-color: black; color: white; font-family: 'Segoe UI', Arial, sans-serif; padding: 20px; text-align: center; overflow: hidden; }
-        .header { font-size: 2.2em; font-weight: bold; margin-bottom: 30px; }
-        .container { display: flex; justify-content: center; gap: 40px; align-items: flex-start; }
-        .day-column { flex: 1; max-width: 220px; display: flex; flex-direction: column; align-items: center; }
+        .header { font-size: 2.5em; font-weight: bold; margin-bottom: 40px; text-transform: uppercase; }
+        .container { display: flex; justify-content: center; gap: 50px; align-items: flex-start; }
+        .day-column { flex: 1; max-width: 250px; display: flex; flex-direction: column; align-items: center; }
         .label { font-size: 1.8em; margin-bottom: 15px; color: #ccc; font-weight: bold; }
         
         /* Map Silhouette Styles */
         .map-icon {
             width: 140px; height: 100px; margin-bottom: 15px;
             background-size: contain; background-repeat: no-repeat; background-position: center;
+            /* Using a South West District shape placeholder */
             background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 60"><path d="M20,45 L15,35 L20,20 L35,10 L55,10 L75,15 L85,30 L80,50 L55,55 L35,50 Z" fill="white"/></svg>');
         }
         
         .rating-text { font-size: 2em; font-weight: 900; text-transform: uppercase; margin-bottom: 15px; }
         
-        /* Individual Fire Ban Display logic */
-        .tfb-area { min-height: 120px; display: flex; flex-direction: column; align-items: center; }
-        .tfb-notice { font-size: 1.1em; font-weight: bold; line-height: 1.2; display: none; }
-        .tfb-active { display: block; }
-        .tfb-icon { color: #e03c31; font-size: 1.4em; display: block; margin-bottom: 5px; }
-        .restrictions { color: #2e5bff; text-decoration: underline; font-size: 0.9em
+        /* Ban Alert Section - Only shows when active */
+        .ban-alert { min-height: 120px; display: none; flex-direction: column; align-items: center; }
+        .ban-active { display: flex; }
+        .ban-icon { width: 30px; height: 30px; margin-bottom: 10px; }
+        .ban-text { font-size: 1.2em; font-weight: bold; line-height: 1.2; }
+        .restrictions { color: #2e5bff; text-decoration: underline; font-size: 0.9em; margin-top: 8px; font-weight: bold; }
+
+        /* CFA Colors */
+        .MODERATE { color: #78be20; } .HIGH { color: #ffb81c; } .EXTREME { color: #e03c31; }
+        .map-MODERATE { filter: invert(61%) sepia(54%) saturate(515%) hue-rotate(42deg) brightness(94%) contrast(91%); }
+        .map-HIGH { filter: invert(79%) sepia(65%) saturate(558%) hue-rotate(352deg) brightness(101%) contrast(105%); }
+        .map-EXTREME { filter: invert(34%) sepia(85%) saturate(2256%) hue-rotate(345deg) brightness(91%) contrast(97%); }
+
+        .footer { margin-top: 60px; font-size: 1em; color: #666; border-top: 1px solid #222; padding-top: 15px; }
+        .timestamp { font-weight: bold; color: #888; }
+    </style>
+</head>
+<body>
+    <div class="header">South West Fire Danger</div>
+    <div id="content" class="container">Connecting to CFA Feed...</div>
+    <div id="footer" class="footer"></div>
+
+    <script>
+        function formatAEST(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleString('en-AU', { 
+                weekday: 'short', day: '2-digit', month: 'short', year: 'numeric',
+                hour: '2-digit', minute: '2-digit', hour12: true, timeZoneName: 'short'
+            });
+        }
+
+        async function updateDisplay() {
+            const rssUrl = "https://www.cfa.vic.gov.au/cfa/rssfeed/southwest-firedistrict_rss.xml";
+            const proxy = "https://corsproxy.io/?" + encodeURIComponent(rssUrl);
+            
+            try {
+                const response = await fetch(proxy);
+                const text = await response.text();
+                const xml = new DOMParser().parseFromString(text, "text/xml");
+                const pubDate = xml.querySelector("pubDate") ? xml.querySelector("pubDate").textContent : "N/A";
+                const items = xml.querySelectorAll("item");
+                
+                let html = '';
+                const labels = ["Today", "Tomorrow", "Overmorrow"];
+                
+                items.forEach((item, i) =>
