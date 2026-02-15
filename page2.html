@@ -65,4 +65,40 @@
                 let html = '';
                 const labels = ["Today", "Tomorrow", "Overmorrow"];
                 
-                items.forEach((item, i) =>
+                items.forEach((item, i) => {
+                    if (i > 2) return;
+                    const desc = item.querySelector("description").textContent.toUpperCase();
+                    const title = item.querySelector("title").textContent.toUpperCase();
+                    
+                    let rating = "MODERATE";
+                    if (desc.includes("EXTREME")) rating = "EXTREME";
+                    else if (desc.includes("HIGH")) rating = "HIGH";
+
+                    // The logic: Only show the ban if it DOES NOT say "NOT CURRENTLY"
+                    const isBanForce = (title.includes("TOTAL FIRE BAN") || desc.includes("TOTAL FIRE BAN")) && !desc.includes("NOT CURRENTLY");
+
+                    html += `
+                        <div class="day-column">
+                            <div class="label">${labels[i]}</div>
+                            <div class="map-icon map-${rating}"></div>
+                            <div class="rating-text ${rating}">${rating}</div>
+                            <div class="ban-alert ${isBanForce ? 'ban-active' : ''}">
+                                <img class="ban-icon" src="https://raw.githubusercontent.com/google/material-design-icons/master/src/alert/warning/materialicons/24px.svg" style="filter: invert(27%) sepia(91%) saturate(2352%) hue-rotate(346deg) brightness(91%) contrast(97%);">
+                                <div class="ban-text" style="color: ${rating === 'EXTREME' ? '#e03c31' : '#ffb81c'}">TOTAL FIRE BAN IN FORCE</div>
+                                <div class="restrictions">RESTRICTIONS APPLY</div>
+                            </div>
+                        </div>`;
+                });
+                
+                document.getElementById('content').innerHTML = html;
+                document.getElementById('footer').innerHTML = `Forecast issued: <span class="timestamp">${formatAEST(pubDate)}</span>`;
+            } catch (err) {
+                document.getElementById('content').innerHTML = "Unable to reach CFA Feed.";
+            }
+        }
+
+        updateDisplay();
+        setInterval(updateDisplay, 1800000); // Check every 30 mins
+    </script>
+</body>
+</html>
