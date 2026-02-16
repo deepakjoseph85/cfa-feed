@@ -9,11 +9,14 @@
             font-family: 'Segoe UI', Arial, sans-serif; 
             margin: 0; 
             padding: 40px; 
-            display: flex; 
-            flex-direction: column; /* Changed to column to stack footer */
-            align-items: center;
+            text-align: center;
         }
-        .container { display: flex; gap: 60px; text-align: center; }
+        .container { 
+            display: flex; 
+            justify-content: center; 
+            gap: 60px; 
+            flex-wrap: wrap;
+        }
         
         .day-label { 
             font-size: 1.6em; 
@@ -36,20 +39,14 @@
             text-transform: uppercase; 
             letter-spacing: 1px;
         }
-
-        /* Footer Styling */
+        
         .footer {
             margin-top: 60px;
-            font-size: 0.9em;
-            color: #555;
+            font-size: 0.8em;
+            color: #444;
             text-transform: uppercase;
-            letter-spacing: 1px;
-            border-top: 1px solid #222;
-            padding-top: 20px;
-            width: 100%;
-            text-align: center;
         }
-        
+
         /* CFA Official Color Palette */
         .MODERATE { color: #78be20; } 
         .HIGH { color: #ffb81c; } 
@@ -73,17 +70,15 @@
                 const parser = new DOMParser();
                 const xml = parser.parseFromString(text, "text/xml");
                 
-                // 1. Get the PubDate for the footer
-                const pubDateNode = xml.querySelector("pubDate");
-                if (pubDateNode) {
-                    const dateObj = new Date(pubDateNode.textContent);
-                    // Format to AEST/AEDT (Melbourne time)
-                    const formattedDate = dateObj.toLocaleString("en-AU", { 
+                // Extract Footer Timestamp
+                const pubDate = xml.querySelector("pubDate")?.textContent;
+                if (pubDate) {
+                    const localTime = new Date(pubDate).toLocaleString("en-AU", { 
                         timeZone: "Australia/Melbourne",
-                        dateStyle: "medium",
-                        timeStyle: "short"
+                        dateStyle: "medium", 
+                        timeStyle: "short" 
                     });
-                    document.getElementById('footer').innerHTML = `Last Update: ${formattedDate} AEST`;
+                    document.getElementById('footer').innerHTML = `Last Update: ${localTime} AEST`;
                 }
 
                 const items = xml.querySelectorAll("item");
@@ -91,20 +86,35 @@
                 
                 for (let i = 0; i < 3; i++) {
                     if (!items[i]) break;
-                    const descContent = items[i].querySelector("description").textContent;
+                    const desc = items[i].querySelector("description").textContent.toUpperCase();
                     
-                    const imgMatch = descContent.match(/src="([^"]+)"/);
-                    const imgSrc = imgMatch ? imgMatch[1] : "";
+                    // Determine Rating and Image
+                    let rating = "MODERATE";
+                    let imgName = "moderate.gif";
+
+                    if (desc.includes("CATASTROPHIC")) { rating = "CATASTROPHIC"; imgName = "catastrophic.gif"; }
+                    else if (desc.includes("EXTREME")) { rating = "EXTREME"; imgName = "extreme.gif"; }
+                    else if (desc.includes("HIGH")) { rating = "HIGH"; imgName = "high.gif"; }
                     
-                    let ratingText = descContent.replace(/<[^>]*>/g, '').trim().toUpperCase();
-                    
-                    let displayRating = "HIGH"; 
-                    if (ratingText.includes("CATASTROPHIC")) displayRating = "CATASTROPHIC";
-                    else if (ratingText.includes("EXTREME")) displayRating = "EXTREME";
-                    else if (ratingText.includes("MODERATE")) displayRating = "MODERATE";
-                    else if (ratingText.includes("NO RATING")) displayRating = "MODERATE";
+                    const imgSrc = `https://www.cfa.vic.gov.au/cfa/images/fdr/southwest/${imgName}`;
 
                     html += `
                         <div class="day-column">
                             <div class="day-label">${labels[i]}</div>
-                            <div class="map-
+                            <div class="map-container">
+                                <img src="${imgSrc}" alt="${rating}">
+                            </div>
+                            <div class="rating ${rating}">${rating}</div>
+                        </div>`;
+                }
+                document.getElementById('content').innerHTML = html;
+            } catch (err) {
+                document.getElementById('content').innerHTML = "Feed Offline";
+            }
+        }
+
+        fetchFeed();
+        setInterval(fetchFeed, 1800000);
+    </script>
+</body>
+</html>
