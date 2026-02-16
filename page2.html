@@ -3,37 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <style>
-        body { background-color: black; color: white; font-family: 'Helvetica', Arial, sans-serif; padding: 20px; text-align: left; }
-        .header { font-size: 1.8em; font-weight: bold; margin-bottom: 30px; }
-        .container { display: flex; gap: 40px; align-items: flex-start; }
-        .day-column { display: flex; flex-direction: column; align-items: flex-start; width: 120px; }
-        .label { font-size: 1.2em; margin-bottom: 10px; color: white; }
+        body { background-color: black; color: white; font-family: 'Segoe UI', Arial, Helvetica, sans-serif; padding: 40px; }
+        .header { font-size: 24px; font-weight: bold; margin-bottom: 40px; }
+        .container { display: flex; gap: 80px; }
+        .day-column { width: 150px; }
+        .label { font-size: 22px; margin-bottom: 15px; }
         
-        /* The Map Icon */
-        .map-svg { width: 80px; height: auto; margin-bottom: 15px; filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.5)); }
-        .region-shape { stroke: #333; stroke-width: 0.5; transition: fill 0.3s ease; }
-        .inner-lines { fill: none; stroke: rgba(0,0,0,0.2); stroke-width: 0.5; }
+        /* Map Styling to match your image */
+        .map-container { position: relative; width: 140px; height: 100px; margin-bottom: 20px; }
+        .map-svg { width: 100%; height: 100%; overflow: visible; }
+        
+        /* The 3D "Grey" base */
+        .map-base { fill: #808080; transform: translate(4px, 4px); }
+        
+        /* The Dynamic Color Layer */
+        .map-top { stroke: #444; stroke-width: 1px; }
+        .boundary-lines { fill: none; stroke: rgba(0,0,0,0.4); stroke-width: 0.8px; }
 
-        .rating { font-size: 1.1em; font-weight: bold; letter-spacing: 0.5px; }
+        .rating { font-size: 20px; font-weight: bold; margin-top: 10px; }
         
-        /* CFA Colors */
-        .MODERATE { fill: #78be20; color: #78be20; } 
-        .HIGH { fill: #ffb81c; color: #ffb81c; } 
-        .EXTREME { fill: #e03c31; color: #e03c31; } 
-        .CATASTROPHIC { fill: #000; color: #e03c31; stroke: white; stroke-width: 0.5; }
+        /* CFA Official Colors */
+        .MODERATE { fill: #78be20; color: #78be20; }
+        .HIGH { fill: #ffb81c; color: #ffb81c; }
+        .EXTREME { fill: #e03c31; color: #e03c31; }
+        .CATASTROPHIC { fill: #000; color: white; }
     </style>
 </head>
 <body>
     <div class="header">Fire Danger Ratings</div>
-    <div id="content" class="container">Loading live CFA data...</div>
+    <div id="content" class="container">Loading...</div>
 
     <script>
-        // Custom SVG shape for the South West region
+        // Complex SVG path to mimic the South West district and its LGAs
+        const southWestPath = "M15,45 L12,50 L15,60 L20,75 L25,80 L40,85 L60,85 L85,85 L95,75 L95,50 L85,45 L85,25 L75,15 L60,15 L45,25 L35,25 L15,35 Z";
+        const innerLines = "M45,25 L50,55 M50,55 L85,45 M50,55 L40,85 M85,45 L70,85 M15,45 L50,55";
+
         const mapTemplate = (colorClass) => `
-            <svg class="map-svg" viewBox="0 0 100 75" xmlns="http://www.w3.org/2000/svg">
-                <path class="region-shape ${colorClass}" d="M10,40 L15,35 L30,35 L40,25 L65,25 L75,15 L85,15 L85,45 L95,45 L95,65 L80,70 L40,70 L25,60 L10,55 Z" />
-                <path class="inner-lines" d="M40,25 L40,70 M65,25 L65,55 M75,15 L75,45 M15,35 L40,45" />
-            </svg>`;
+            <div class="map-container">
+                <svg class="map-svg" viewBox="0 0 100 100">
+                    <path class="map-base" d="${southWestPath}" />
+                    <path class="map-top ${colorClass}" d="${southWestPath}" />
+                    <path class="boundary-lines" d="${innerLines}" />
+                </svg>
+            </div>`;
 
         async function fetchFeed() {
             const rssUrl = "https://www.cfa.vic.gov.au/cfa/rssfeed/southwest-firedistrict_rss.xml";
@@ -51,30 +63,26 @@
                 
                 for (let i = 0; i < 3; i++) {
                     const desc = items[i].querySelector("description").textContent.toUpperCase();
-                    
                     let colorClass = "HIGH";
-                    let ratingText = "HIGH";
 
-                    if (desc.includes("CATASTROPHIC")) { colorClass = "CATASTROPHIC"; ratingText = "CATASTROPHIC"; }
-                    else if (desc.includes("EXTREME")) { colorClass = "EXTREME"; ratingText = "EXTREME"; }
-                    else if (desc.includes("MODERATE") || desc.includes("NO RATING")) { colorClass = "MODERATE"; ratingText = "MODERATE"; }
-                    else { colorClass = "HIGH"; ratingText = "HIGH"; }
+                    if (desc.includes("CATASTROPHIC")) colorClass = "CATASTROPHIC";
+                    else if (desc.includes("EXTREME")) colorClass = "EXTREME";
+                    else if (desc.includes("MODERATE")) colorClass = "MODERATE";
 
                     html += `
                         <div class="day-column">
                             <div class="label">${labels[i]}</div>
                             ${mapTemplate(colorClass)}
-                            <div class="rating ${colorClass}">${ratingText}</div>
+                            <div class="rating ${colorClass}">${colorClass}</div>
                         </div>`;
                 }
                 document.getElementById('content').innerHTML = html;
             } catch (err) {
-                document.getElementById('content').innerHTML = "Unable to reach CFA data.";
+                document.getElementById('content').innerHTML = "Unable to reach data.";
             }
         }
 
         fetchFeed();
-        setInterval(fetchFeed, 1800000);
     </script>
 </body>
 </html>
