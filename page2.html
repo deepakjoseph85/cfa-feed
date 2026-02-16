@@ -1,111 +1,103 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <style>
-        body { background-color: black; color: white; font-family: 'Segoe UI', Arial, sans-serif; padding: 40px; text-align: center; }
-        .header { font-size: 2.5em; font-weight: bold; margin-bottom: 50px; border-bottom: 2px solid #333; padding-bottom: 10px; }
-        .container { display: flex; justify-content: center; gap: 40px; }
-        .day-column { flex: 1; max-width: 300px; display: flex; flex-direction: column; align-items: center; }
-        .label { font-size: 2em; margin-bottom: 20px; color: #fff; font-weight: bold; }
+        body { background-color: black; color: white; font-family: 'Segoe UI', Arial, sans-serif; padding: 20px; text-align: center; }
+        .header { font-size: 2.2em; font-weight: bold; margin-bottom: 40px; border-bottom: 2px solid #222; padding-bottom: 15px; }
         
-        /* Custom Map Silhouette Style */
-        .map-silhouette {
-            width: 250px; 
-            height: 180px;
-            background-image: url('image_41d5c2.png'); /* Ensure this filename matches your GitHub upload */
-            background-size: contain;
-            background-repeat: no-repeat;
-            background-position: center;
+        /* Layout for 3 Columns */
+        .container { display: flex; justify-content: space-evenly; align-items: flex-start; max-width: 1400px; margin: 0 auto; }
+        .day-column { flex: 1; display: flex; flex-direction: column; align-items: center; }
+        
+        .label { font-size: 2em; margin-bottom: 15px; font-weight: bold; color: #fff; }
+        
+        /* Map Silhouette with Fallback Backgrounds */
+        .map-icon {
+            width: 250px; height: 180px;
+            background-image: url('image_41d5c2.png');
+            background-size: contain; background-repeat: no-repeat; background-position: center;
             margin-bottom: 15px;
+            transition: filter 0.5s ease;
         }
 
-        .rating { font-size: 2.2em; font-weight: 900; text-transform: uppercase; margin-bottom: 15px; }
+        .rating-text { font-size: 2.2em; font-weight: 900; text-transform: uppercase; margin-bottom: 20px; }
 
-        /* Total Fire Ban Notice Styles */
-        .tfb-area { min-height: 120px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .tfb-box { background-color: #1a1a1a; padding: 15px; border-radius: 5px; display: none; width: 90%; }
+        /* Ban Alert Box */
+        .tfb-area { min-height: 110px; width: 100%; display: flex; justify-content: center; }
+        .tfb-box { 
+            background-color: #151515; border: 1px solid #333; border-radius: 6px; 
+            padding: 12px; width: 260px; display: none; 
+        }
         .tfb-active { display: block; }
-        .tfb-text { font-size: 1.1em; font-weight: bold; line-height: 1.2; }
-        .tfb-icon { color: #e03c31; font-size: 1.4em; vertical-align: middle; margin-right: 5px; }
-        .restrictions { color: #2e5bff; text-decoration: underline; font-size: 0.9em; margin-top: 8px; font-weight: bold; }
+        .tfb-header { font-size: 1.1em; font-weight: bold; margin-bottom: 5px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .restrictions { color: #3498db; text-decoration: underline; font-weight: bold; font-size: 0.95em; }
 
-        /* CFA Colors and Map Tinting */
+        /* Dynamic Colors & Map Tinting */
         .MODERATE { color: #78be20; }
         .HIGH { color: #ffb81c; }
         .EXTREME { color: #e67e22; }
 
-        /* Dynamic Tinting for your yellow map icon */
+        /* Tinting the map based on rating */
         .map-MODERATE { filter: invert(61%) sepia(54%) saturate(515%) hue-rotate(42deg) brightness(94%) contrast(91%); }
-        .map-HIGH { filter: none; } /* Default is your yellow image */
+        .map-HIGH { filter: none; } /* Default is your yellow/gold map */
         .map-EXTREME { filter: invert(58%) sepia(93%) saturate(1200%) hue-rotate(355deg) brightness(95%) contrast(105%); }
 
-        .footer { margin-top: 60px; font-size: 1em; color: #666; border-top: 1px solid #222; padding-top: 15px; }
+        .footer { margin-top: 50px; color: #555; font-size: 0.9em; padding-top: 15px; border-top: 1px solid #111; }
     </style>
 </head>
 <body>
     <div class="header">South West Fire Danger</div>
-    <div id="content" class="container">Connecting to live feed...</div>
+    <div id="content" class="container">Connecting to CFA Feed...</div>
     <div id="footer" class="footer"></div>
 
     <script>
-        function formatAEST(dateString) {
-            const date = new Date(dateString);
-            return date.toLocaleString('en-AU', { 
-                weekday: 'short', day: '2-digit', month: 'short', year: 'numeric',
-                hour: '2-digit', minute: '2-digit', hour12: true, timeZoneName: 'short'
-            });
-        }
-
-        async function fetchFeed() {
-            const rssUrl = "https://www.cfa.vic.gov.au/cfa/rssfeed/southwest-firedistrict_rss.xml";
-            const proxy = "https://corsproxy.io/?" + encodeURIComponent(rssUrl);
-            
+        async function updateFeed() {
             try {
-                const response = await fetch(proxy);
-                const text = await response.text();
+                const res = await fetch("https://corsproxy.io/?https://www.cfa.vic.gov.au/cfa/rssfeed/southwest-firedistrict_rss.xml");
+                const text = await res.text();
                 const xml = new DOMParser().parseFromString(text, "text/xml");
-                const pubDate = xml.querySelector("pubDate").textContent;
                 const items = xml.querySelectorAll("item");
-                
+                const pubDate = xml.querySelector("pubDate").textContent;
+
                 let html = '';
                 const labels = ["Today", "Tomorrow", "Overmorrow"];
-                
-                for (let i = 0; i < 3; i++) {
-                    const desc = items[i].querySelector("description").textContent.trim().toUpperCase();
-                    const title = items[i].querySelector("title").textContent.toUpperCase();
+
+                items.forEach((item, i) => {
+                    if (i > 2) return;
+                    const desc = item.querySelector("description").textContent.toUpperCase();
+                    const title = item.querySelector("title").textContent.toUpperCase();
                     
                     let rating = "MODERATE";
                     if (desc.includes("EXTREME")) rating = "EXTREME";
                     else if (desc.includes("HIGH")) rating = "HIGH";
 
-                    // Logic for Total Fire Ban
                     const isBan = (title.includes("TOTAL FIRE BAN") || desc.includes("TOTAL FIRE BAN")) && !desc.includes("NOT CURRENTLY");
 
                     html += `
                         <div class="day-column">
                             <div class="label">${labels[i]}</div>
-                            <div class="map-silhouette map-${rating}"></div>
-                            <div class="rating ${rating}">${rating}</div>
+                            <div class="map-icon map-${rating}"></div>
+                            <div class="rating-text ${rating}">${rating}</div>
                             <div class="tfb-area">
                                 <div class="tfb-box ${isBan ? 'tfb-active' : ''}">
-                                    <div class="tfb-text" style="color: ${rating === 'EXTREME' ? '#e67e22' : '#ffb81c'}">
-                                        <span class="tfb-icon">🚫</span> TOTAL FIRE BAN IN FORCE
+                                    <div class="tfb-header" style="color: ${rating === 'EXTREME' ? '#e67e22' : '#ffb81c'}">
+                                        <span style="color:red">🚫</span> TOTAL FIRE BAN IN FORCE
                                     </div>
                                     <div class="restrictions">RESTRICTIONS APPLY</div>
                                 </div>
                             </div>
                         </div>`;
-                }
+                });
+
                 document.getElementById('content').innerHTML = html;
-                document.getElementById('footer').innerHTML = `Forecast issued: ${formatAEST(pubDate)}`;
-            } catch (err) {
-                document.getElementById('content').innerHTML = "Unable to load CFA Feed.";
+                document.getElementById('footer').innerHTML = "Forecast issued: " + new Date(pubDate).toLocaleString('en-AU', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true, timeZoneName: 'short' });
+            } catch (e) {
+                document.getElementById('content').innerHTML = "Unable to reach CFA Feed.";
             }
         }
-
-        fetchFeed();
-        setInterval(fetchFeed, 1800000);
+        updateFeed();
+        setInterval(updateFeed, 1800000);
     </script>
 </body>
 </html>
