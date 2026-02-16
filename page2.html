@@ -1,142 +1,115 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>South West Fire Danger</title>
     <style>
         body { 
             background-color: black; 
             color: white; 
-            font-family: 'Segoe UI', Roboto, Arial, sans-serif; 
+            font-family: 'Segoe UI', Arial, sans-serif; 
+            margin: 0; 
             padding: 40px; 
-            text-align: center; 
-        }
-        .header { 
-            font-size: 2.5em; 
-            font-weight: bold; 
-            margin-bottom: 50px; 
-            border-bottom: 2px solid #333; 
-            padding-bottom: 10px; 
-        }
-        .container { 
             display: flex; 
             justify-content: center; 
-            gap: 40px; 
-            flex-wrap: wrap; 
         }
-        .day-column { 
-            flex: 1; 
-            min-width: 200px; 
-            max-width: 300px; 
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        .label { 
-            font-size: 1.8em; 
-            margin-bottom: 20px; 
-            color: #ccc; 
-            text-transform: uppercase;
-        }
-        .map-img { 
-            width: 100%; 
-            max-width: 250px; 
-            border-radius: 12px; 
-            margin-bottom: 10px;
-            border: 1px solid #444;
-        }
-        .rating-text {
+        .container { display: flex; gap: 60px; text-align: center; }
+        
+        /* Header styling for Label + Date */
+        .day-header { margin-bottom: 20px; }
+        
+        .day-label { 
+            font-size: 1.6em; 
+            color: white; 
             font-weight: bold;
-            font-size: 1.6em;
-            margin-bottom: 10px;
             text-transform: uppercase;
+            margin: 0;
         }
-        .tfb-badge {
-            background-color: #e03c31;
-            color: white;
-            padding: 8px 15px;
+
+        .day-date {
+            font-size: 1.1em;
+            color: #888;
+            margin-top: 4px;
+        }
+
+        .map-container img { 
+            width: 220px; 
+            height: auto; 
             border-radius: 4px;
-            font-weight: bold;
-            font-size: 0.9em;
-            margin-top: 10px;
-            animation: pulse 2s infinite;
+            margin-bottom: 20px;
         }
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.7; }
-            100% { opacity: 1; }
+
+        .rating { 
+            font-size: 2em; 
+            font-weight: 900; 
+            text-transform: uppercase; 
+            letter-spacing: 1px;
         }
-        .error { color: #888; font-style: italic; margin-top: 20px; }
+        
+        /* CFA Official Color Palette */
+        .MODERATE { color: #78be20; } 
+        .HIGH { color: #ffb81c; } 
+        .EXTREME { color: #e03c31; } 
+        .CATASTROPHIC { color: white; background: red; padding: 0 10px; }
     </style>
 </head>
 <body>
-
-    <div class="header">South West Fire Danger</div>
-    
-    <div id="content" class="container">
-        <p>Fetching live CFA data...</p>
-    </div>
+    <div id="content" class="container">Loading...</div>
 
     <script>
-        async function fetchFeed() {
-            const contentDiv = document.getElementById('content');
-            const rssUrl = "https://www.cfa.vic.gov.au/cfa/rssfeed/southwest-firedistrict_rss.xml";
+        // Function to calculate dates for the headers
+        function getForecastDates() {
+            const options = { day: 'numeric', month: 'short' };
+            const today = new Date();
             
-            // Using AllOrigins "raw" proxy to bypass CORS
-            const proxy = `https://api.allorigins.win/raw?url=${encodeURIComponent(rssUrl)}`;
+            const dateArray = [];
+            for (let i = 0; i < 3; i++) {
+                const targetDate = new Date();
+                targetDate.setDate(today.getDate() + i);
+                dateArray.push(targetDate.toLocaleDateString('en-AU', options));
+            }
+            return dateArray;
+        }
+
+        async function fetchFeed() {
+            const rssUrl = "https://www.cfa.vic.gov.au/cfa/rssfeed/southwest-firedistrict_rss.xml";
+            const proxy = "https://corsproxy.io/?" + encodeURIComponent(rssUrl);
+            const labels = ["Today", "Tomorrow", "Overmorrow"];
+            const dates = getForecastDates();
             
             try {
                 const response = await fetch(proxy);
-                if (!response.ok) throw new Error('Proxy error');
-                
                 const text = await response.text();
                 const parser = new DOMParser();
                 const xml = parser.parseFromString(text, "text/xml");
                 const items = xml.querySelectorAll("item");
                 
-                if (items.length === 0) throw new Error('No items found');
-
                 let html = '';
-                const labels = ["Today", "Tomorrow", "Overmorrow"];
-                
                 for (let i = 0; i < 3; i++) {
-                    if (!items[i]) break;
-
-                    const desc = items[i].querySelector("description").textContent.toUpperCase();
+                    const descContent = items[i].querySelector("description").textContent;
                     
-                    let rating = "NO RATING";
-                    let color = "#888"; 
-                    let img = "norating.gif";
-
-                    if (desc.includes("CATASTROPHIC")) { rating = "Catastrophic"; color = "#e03c31"; img = "catastrophic.gif"; }
-                    else if (desc.includes("EXTREME")) { rating = "Extreme"; color = "#f39100"; img = "extreme.gif"; }
-                    else if (desc.includes("HIGH")) { rating = "High"; color = "#ffcc00"; img = "high.gif"; }
-                    else if (desc.includes("MODERATE")) { rating = "Moderate"; color = "#71b31a"; img = "moderate.gif"; }
-
-                    // Fix for TFB logic
-                    const isTFB = desc.includes("TOTAL FIRE BAN") && !desc.includes("NOT CURRENTLY");
-                    const imgUrl = `https://www.cfa.vic.gov.au/cfa/images/fdr/southwest/${img}`;
+                    // 1. Extract the map image URL
+                    const imgMatch = descContent.match(/src="([^"]+)"/);
+                    const imgSrc = imgMatch ? imgMatch[1] : "";
+                    
+                    // 2. Extract and simplify the rating text
+                    let ratingText = descContent.replace(/<[^>]*>/g, '').trim().toUpperCase();
+                    
+                    let displayRating = "HIGH"; 
+                    if (ratingText.includes("CATASTROPHIC")) displayRating = "CATASTROPHIC";
+                    else if (ratingText.includes("EXTREME")) displayRating = "EXTREME";
+                    else if (ratingText.includes("MODERATE")) displayRating = "MODERATE";
+                    else if (ratingText.includes("NO RATING")) displayRating = "MODERATE";
 
                     html += `
                         <div class="day-column">
-                            <div class="label">${labels[i]}</div>
-                            <img src="${imgUrl}" alt="${rating}" class="map-img">
-                            <div class="rating-text" style="color: ${color};">${rating}</div>
-                            ${isTFB ? '<div class="tfb-badge">TOTAL FIRE BAN</div>' : ''}
+                            <div class="day-header">
+                                <div class="day-label">${labels[i]}</div>
+                                <div class="day-date">${dates[i]}</div>
+                            </div>
+                            <div class="map-container">
+                                <img src="${imgSrc}" alt="Map">
+                            </div>
+                            <div class="rating ${displayRating}">${displayRating}</div>
                         </div>`;
                 }
-                
-                contentDiv.innerHTML = html;
-
-            } catch (err) {
-                console.error(err);
-                contentDiv.innerHTML = "<div class='error'>Connection error. The CFA feed might be temporarily unavailable.</div>";
-            }
-        }
-
-        fetchFeed();
-        setInterval(fetchFeed, 1800000); // 30 mins
-    </script>
-</body>
-</html>
+                document.getElementById
