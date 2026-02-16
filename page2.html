@@ -5,16 +5,69 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>South West Fire Danger</title>
     <style>
-        body { background-color: black; color: white; font-family: 'Segoe UI', sans-serif; padding: 40px; text-align: center; }
-        .header { font-size: 2.5em; font-weight: bold; margin-bottom: 50px; border-bottom: 2px solid #333; padding-bottom: 10px; }
-        .container { display: flex; justify-content: center; gap: 40px; flex-wrap: wrap; min-height: 300px; }
-        .day-column { flex: 1; min-width: 200px; max-width: 300px; display: flex; flex-direction: column; align-items: center; }
-        .label { font-size: 1.8em; margin-bottom: 20px; color: #ccc; text-transform: uppercase; }
-        .map-img { width: 100%; max-width: 250px; border-radius: 12px; margin-bottom: 10px; border: 1px solid #444; }
-        .rating-text { font-weight: bold; font-size: 1.5em; margin-bottom: 10px; text-transform: uppercase; }
-        .tfb-badge { background-color: #e03c31; color: white; padding: 5px 15px; border-radius: 4px; font-weight: bold; animation: pulse 2s infinite; }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
-        .error { color: #ff6666; font-size: 1.2em; margin-top: 20px; }
+        body { 
+            background-color: black; 
+            color: white; 
+            font-family: 'Segoe UI', Roboto, Arial, sans-serif; 
+            padding: 40px; 
+            text-align: center; 
+        }
+        .header { 
+            font-size: 2.5em; 
+            font-weight: bold; 
+            margin-bottom: 50px; 
+            border-bottom: 2px solid #333; 
+            padding-bottom: 10px; 
+        }
+        .container { 
+            display: flex; 
+            justify-content: center; 
+            gap: 40px; 
+            flex-wrap: wrap; 
+        }
+        .day-column { 
+            flex: 1; 
+            min-width: 200px; 
+            max-width: 300px; 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .label { 
+            font-size: 1.8em; 
+            margin-bottom: 20px; 
+            color: #ccc; 
+            text-transform: uppercase;
+        }
+        .map-img { 
+            width: 100%; 
+            max-width: 250px; 
+            border-radius: 12px; 
+            margin-bottom: 10px;
+            border: 1px solid #444;
+        }
+        .rating-text {
+            font-weight: bold;
+            font-size: 1.6em;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+        .tfb-badge {
+            background-color: #e03c31;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 0.9em;
+            margin-top: 10px;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+        .error { color: #888; font-style: italic; margin-top: 20px; }
     </style>
 </head>
 <body>
@@ -22,26 +75,27 @@
     <div class="header">South West Fire Danger</div>
     
     <div id="content" class="container">
-        <p id="loading-status">Connecting to CFA Live Feed...</p>
+        <p>Fetching live CFA data...</p>
     </div>
 
     <script>
         async function fetchFeed() {
             const contentDiv = document.getElementById('content');
-            // Try a different public proxy if the first one fails
             const rssUrl = "https://www.cfa.vic.gov.au/cfa/rssfeed/southwest-firedistrict_rss.xml";
-            const proxy = "https://api.allorigins.win/get?url=" + encodeURIComponent(rssUrl);
+            
+            // Using AllOrigins "raw" proxy to bypass CORS
+            const proxy = `https://api.allorigins.win/raw?url=${encodeURIComponent(rssUrl)}`;
             
             try {
                 const response = await fetch(proxy);
-                if (!response.ok) throw new Error('Proxy unreachable');
+                if (!response.ok) throw new Error('Proxy error');
                 
-                const data = await response.json();
+                const text = await response.text();
                 const parser = new DOMParser();
-                const xml = parser.parseFromString(data.contents, "text/xml");
+                const xml = parser.parseFromString(text, "text/xml");
                 const items = xml.querySelectorAll("item");
                 
-                if (items.length === 0) throw new Error('No data found in RSS');
+                if (items.length === 0) throw new Error('No items found');
 
                 let html = '';
                 const labels = ["Today", "Tomorrow", "Overmorrow"];
@@ -52,7 +106,7 @@
                     const desc = items[i].querySelector("description").textContent.toUpperCase();
                     
                     let rating = "NO RATING";
-                    let color = "#888";
+                    let color = "#888"; 
                     let img = "norating.gif";
 
                     if (desc.includes("CATASTROPHIC")) { rating = "Catastrophic"; color = "#e03c31"; img = "catastrophic.gif"; }
@@ -60,13 +114,14 @@
                     else if (desc.includes("HIGH")) { rating = "High"; color = "#ffcc00"; img = "high.gif"; }
                     else if (desc.includes("MODERATE")) { rating = "Moderate"; color = "#71b31a"; img = "moderate.gif"; }
 
+                    // Fix for TFB logic
                     const isTFB = desc.includes("TOTAL FIRE BAN") && !desc.includes("NOT CURRENTLY");
                     const imgUrl = `https://www.cfa.vic.gov.au/cfa/images/fdr/southwest/${img}`;
 
                     html += `
                         <div class="day-column">
                             <div class="label">${labels[i]}</div>
-                            <img src="${imgUrl}" class="map-img" onerror="this.src='https://placehold.co/250x200?text=Map+Unavailable'">
+                            <img src="${imgUrl}" alt="${rating}" class="map-img">
                             <div class="rating-text" style="color: ${color};">${rating}</div>
                             ${isTFB ? '<div class="tfb-badge">TOTAL FIRE BAN</div>' : ''}
                         </div>`;
@@ -76,12 +131,12 @@
 
             } catch (err) {
                 console.error(err);
-                contentDiv.innerHTML = `<div class="error">Data Error: ${err.message}<br><small>Check internet or CFA server status.</small></div>`;
+                contentDiv.innerHTML = "<div class='error'>Connection error. The CFA feed might be temporarily unavailable.</div>";
             }
         }
 
         fetchFeed();
-        setInterval(fetchFeed, 1800000); 
+        setInterval(fetchFeed, 1800000); // 30 mins
     </script>
 </body>
 </html>
