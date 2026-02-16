@@ -3,35 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <style>
-        /* Minimalist dark background */
-        body { background-color: black; color: white; font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 20px; }
-        .container { display: flex; justify-content: center; gap: 40px; }
-        .day-column { text-align: center; }
+        body { background-color: black; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        .container { display: flex; gap: 20px; }
         
-        /* The Map Box */
+        /* Pure visual box - no text */
         .map-box { 
-            width: 140px; height: 90px; margin: 0 auto 10px auto; 
-            border-radius: 8px; display: flex; align-items: center; justify-content: center;
-            font-size: 0.8em; font-weight: bold; color: black;
+            width: 150px; 
+            height: 100px; 
+            border-radius: 10px; 
+            transition: background-color 0.5s ease;
         }
 
-        /* Rating Text */
-        .rating { font-size: 1.5em; font-weight: 900; text-transform: uppercase; }
-        
         /* CFA Official Colors */
-        .MODERATE { color: #78be20; } 
-        .HIGH { color: #ffb81c; } 
-        .EXTREME { color: #e03c31; } 
-        .CATASTROPHIC { color: white; background-color: #000; border: 2px solid red; }
-
         .bg-MODERATE { background-color: #78be20; }
         .bg-HIGH { background-color: #ffb81c; }
         .bg-EXTREME { background-color: #e03c31; }
-        .bg-CATASTROPHIC { background-color: #000; border: 2px solid white; }
+        .bg-CATASTROPHIC { background-color: #000; border: 3px solid #e03c31; box-sizing: border-box; }
     </style>
 </head>
 <body>
-    <div id="content" class="container">Loading...</div>
+    <div id="content" class="container"></div>
 
     <script>
         async function fetchFeed() {
@@ -46,24 +37,21 @@
                 const items = xml.querySelectorAll("item");
                 
                 let html = '';
+                // Loop through Today, Tomorrow, Overmorrow
                 for (let i = 0; i < 3; i++) {
-                    const ratingText = items[i].querySelector("description").textContent.trim().toUpperCase();
+                    const description = items[i].querySelector("description").textContent.trim().toUpperCase();
                     
                     let colorClass = "HIGH";
-                    if (ratingText.includes("EXTREME")) colorClass = "EXTREME";
-                    if (ratingText.includes("MODERATE")) colorClass = "MODERATE";
-                    if (ratingText.includes("CATASTROPHIC")) colorClass = "CATASTROPHIC";
-                    if (ratingText.includes("NO RATING")) colorClass = "MODERATE";
+                    if (description.includes("EXTREME")) colorClass = "EXTREME";
+                    if (description.includes("MODERATE")) colorClass = "MODERATE";
+                    if (description.includes("CATASTROPHIC")) colorClass = "CATASTROPHIC";
+                    if (description.includes("NO RATING")) colorClass = "MODERATE";
 
-                    html += `
-                        <div class="day-column">
-                            <div class="map-box bg-${colorClass}">SOUTH WEST</div>
-                            <div class="rating ${colorClass}">${ratingText}</div>
-                        </div>`;
+                    html += `<div class="map-box bg-${colorClass}"></div>`;
                 }
                 document.getElementById('content').innerHTML = html;
             } catch (err) {
-                document.getElementById('content').innerHTML = "Feed Unavailable";
+                console.error("Feed error:", err);
             }
         }
 
