@@ -19,15 +19,25 @@
             margin-bottom: 40px;
             border-left: 5px solid #e03c31;
             padding-left: 15px;
+            text-align: left;
         }
 
+        /* Aligned to the left */
         .container { 
             display: flex; 
-            justify-content: center; 
+            justify-content: flex-start; 
             gap: 60px; 
             text-align: center; 
+            flex-wrap: wrap;
         }
         
+        .day-column {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 220px; /* Maintains consistent width for alignment */
+        }
+
         .day-label { 
             font-size: 1.6em; 
             color: #888; 
@@ -61,14 +71,12 @@
             border-radius: 4px;
             font-size: 1em;
             letter-spacing: 1px;
-            /* Animation triggers */
             animation: pulse-red 1.5s infinite ease-in-out;
         }
 
-        /* Pulse Animation Logic */
         @keyframes pulse-red {
             0% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.6; transform: scale(1.05); }
+            50% { opacity: 0.6; transform: scale(1.03); }
             100% { opacity: 1; transform: scale(1); }
         }
         
@@ -77,6 +85,7 @@
             color: #444;
             font-size: 0.8em;
             text-transform: uppercase;
+            text-align: left;
         }
 
         /* CFA Official Color Palette */
@@ -105,7 +114,6 @@
                 const parser = new DOMParser();
                 const xml = parser.parseFromString(text, "text/xml");
                 
-                // Update Footer Time
                 const pubDate = xml.querySelector("pubDate")?.textContent;
                 if (pubDate) {
                     const localTime = new Date(pubDate).toLocaleString("en-AU", { 
@@ -133,7 +141,6 @@
                     else if (descUpper.includes("MODERATE")) displayRating = "MODERATE";
                     else if (descUpper.includes("NO RATING")) displayRating = "MODERATE";
 
-                    // TFB Logic: Check for Ban status
                     const isBan = descUpper.includes("TOTAL FIRE BAN") && !descUpper.includes("NOT CURRENTLY");
 
                     html += `
@@ -153,7 +160,7 @@
         }
 
         fetchFeed();
-        setInterval(fetchFeed, 1800000); // 30 min refresh
+        setInterval(fetchFeed, 1800000); 
     </script>
 </body>
 </html>
