@@ -14,21 +14,12 @@
         }
         .container { display: flex; gap: 60px; text-align: center; }
         
-        /* Header styling for Label + Date */
-        .day-header { margin-bottom: 20px; }
-        
         .day-label { 
             font-size: 1.6em; 
-            color: white; 
+            color: #888; 
+            margin-bottom: 20px; 
             font-weight: bold;
             text-transform: uppercase;
-            margin: 0;
-        }
-
-        .day-date {
-            font-size: 1.1em;
-            color: #888;
-            margin-top: 4px;
         }
 
         .map-container img { 
@@ -56,25 +47,10 @@
     <div id="content" class="container">Loading...</div>
 
     <script>
-        // Function to calculate dates for the headers
-        function getForecastDates() {
-            const options = { day: 'numeric', month: 'short' };
-            const today = new Date();
-            
-            const dateArray = [];
-            for (let i = 0; i < 3; i++) {
-                const targetDate = new Date();
-                targetDate.setDate(today.getDate() + i);
-                dateArray.push(targetDate.toLocaleDateString('en-AU', options));
-            }
-            return dateArray;
-        }
-
         async function fetchFeed() {
             const rssUrl = "https://www.cfa.vic.gov.au/cfa/rssfeed/southwest-firedistrict_rss.xml";
             const proxy = "https://corsproxy.io/?" + encodeURIComponent(rssUrl);
             const labels = ["Today", "Tomorrow", "Overmorrow"];
-            const dates = getForecastDates();
             
             try {
                 const response = await fetch(proxy);
@@ -94,7 +70,8 @@
                     // 2. Extract and simplify the rating text
                     let ratingText = descContent.replace(/<[^>]*>/g, '').trim().toUpperCase();
                     
-                    let displayRating = "HIGH"; 
+                    // Clean up "NO RATING" or long descriptions to just the core word
+                    let displayRating = "HIGH"; // Default
                     if (ratingText.includes("CATASTROPHIC")) displayRating = "CATASTROPHIC";
                     else if (ratingText.includes("EXTREME")) displayRating = "EXTREME";
                     else if (ratingText.includes("MODERATE")) displayRating = "MODERATE";
@@ -102,14 +79,21 @@
 
                     html += `
                         <div class="day-column">
-                            <div class="day-header">
-                                <div class="day-label">${labels[i]}</div>
-                                <div class="day-date">${dates[i]}</div>
-                            </div>
+                            <div class="day-label">${labels[i]}</div>
                             <div class="map-container">
                                 <img src="${imgSrc}" alt="Map">
                             </div>
                             <div class="rating ${displayRating}">${displayRating}</div>
                         </div>`;
                 }
-                document.getElementById
+                document.getElementById('content').innerHTML = html;
+            } catch (err) {
+                document.getElementById('content').innerHTML = "Feed Offline";
+            }
+        }
+
+        fetchFeed();
+        setInterval(fetchFeed, 1800000);
+    </script>
+</body>
+</html>
