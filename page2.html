@@ -6,57 +6,53 @@
     <title>South West Fire Danger</title>
     <style>
         body { background-color: black; color: white; font-family: 'Segoe UI', Arial, sans-serif; padding: 40px; text-align: center; }
-        .header { font-size: 2.5em; font-weight: bold; margin-bottom: 5px; }
-        .update-time { font-size: 0.8em; color: #666; margin-bottom: 50px; text-transform: uppercase; }
+        .header { font-size: 2.8em; font-weight: bold; margin-bottom: 5px; }
+        .update-time { font-size: 0.8em; color: #666; margin-bottom: 40px; text-transform: uppercase; letter-spacing: 2px; }
         
-        .container { display: flex; justify-content: center; gap: 60px; flex-wrap: wrap; }
-        .day-column { flex: 1; max-width: 250px; display: flex; flex-direction: column; align-items: center; }
+        .container { display: flex; justify-content: center; gap: 50px; flex-wrap: wrap; }
+        .day-column { flex: 1; max-width: 280px; display: flex; flex-direction: column; align-items: center; }
         
-        .label { font-size: 2em; margin-bottom: 20px; font-weight: bold; text-transform: uppercase; }
+        .label { font-size: 2.2em; margin-bottom: 15px; font-weight: bold; text-transform: uppercase; }
 
-        /* District Map Icon Styling */
-        .map-icon {
-            width: 140px;
-            height: 100px;
+        /* The 3D Map Image */
+        .map-img {
+            width: 220px;
+            height: auto;
             margin-bottom: 15px;
-            transition: fill 0.5s ease;
+            filter: drop-shadow(0px 4px 8px rgba(0,0,0,0.5));
         }
 
-        .rating { font-size: 1.8em; font-weight: 900; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 10px; }
+        .rating { font-size: 2em; font-weight: 900; letter-spacing: 1px; text-transform: uppercase; margin-top: 10px; }
 
-        /* TFB Logo Box */
-        .tfb-container {
-            width: 140px;
-            padding: 10px;
+        /* Total Fire Ban Badge */
+        .tfb-badge {
+            margin-top: 20px;
+            padding: 10px 15px;
             background-color: #d1190d; 
             border: 2px solid white;
-            border-radius: 10px;
-            margin-top: 15px;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 160px;
         }
-        .tfb-text { font-weight: 900; font-size: 0.8em; color: white; margin-top: 5px; line-height: 1.1; }
+        .tfb-text { font-weight: 900; font-size: 0.9em; color: white; margin-top: 5px; line-height: 1.1; }
 
-        /* Official CFA Colors */
-        .MODERATE { color: #78be20; fill: #78be20; } 
-        .HIGH { color: #ffb81c; fill: #ffb81c; } 
-        .EXTREME { color: #e03c31; fill: #e03c31; } 
-        .CATASTROPHIC { color: #fb4f4f; fill: #000; stroke: red; }
-        .NO-RATING { color: #666; fill: #333; }
+        /* Color Coding */
+        .MODERATE { color: #78be20; } 
+        .HIGH { color: #ffb81c; } 
+        .EXTREME { color: #e03c31; } 
+        .CATASTROPHIC { color: white; background-color: black; border: 2px solid red; padding: 0 10px; }
     </style>
 </head>
 <body>
 
     <div class="header">South West Fire Danger</div>
-    <div id="last-update" class="update-time">Syncing...</div>
+    <div id="last-update" class="update-time">SYNCING...</div>
     
     <div id="content" class="container"></div>
 
     <script>
-        // SVG District Silhouette for South West
-        const mapSVG = (colorClass) => `
-            <svg class="map-icon ${colorClass}" viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">
-                <path d="M40,20 L160,20 L180,60 L170,110 L140,130 L60,130 L30,100 L20,50 Z" stroke="white" stroke-width="3" />
-            </svg>`;
-
         async function fetchFeed() {
             const rssUrl = "https://www.cfa.vic.gov.au/cfa/rssfeed/southwest-firedistrict_rss.xml";
             const proxy = "https://corsproxy.io/?" + encodeURIComponent(rssUrl);
@@ -69,14 +65,14 @@
                 const items = xml.querySelectorAll("item");
                 
                 let html = '';
-                const labels = ["Today", "Tomorrow", "Overmorrow"];
+                const labels = ["TODAY", "TOMORROW", "OVERMORROW"];
                 
                 for (let i = 0; i < 3; i++) {
                     const descRaw = items[i].querySelector("description").textContent.toUpperCase();
                     
-                    // Regex to extract ONLY the rating and ignore the dates/numbers
+                    // Extracts only the rating (HIGH, EXTREME, etc.)
                     const ratingMatch = descRaw.match(/(CATASTROPHIC|EXTREME|HIGH|MODERATE|NO RATING)/);
-                    const ratingText = ratingMatch ? ratingMatch[0] : "NO RATING";
+                    const ratingText = ratingMatch ? ratingMatch[0] : "MODERATE";
                     
                     const isTFB = descRaw.includes("TOTAL FIRE BAN");
                     const colorClass = ratingText.replace(" ", "-");
@@ -84,22 +80,25 @@
                     html += `
                         <div class="day-column">
                             <div class="label">${labels[i]}</div>
-                            ${mapSVG(colorClass)}
+                            
+                            <img src="https://i.postimg.cc/mD8pXqXz/south-west-3d.png" class="map-img" alt="Map">
+                            
                             <div class="rating ${colorClass}">${ratingText}</div>
+                            
                             ${isTFB ? `
-                                <div class="tfb-container">
-                                    <svg width="50" height="50" viewBox="0 0 100 100">
-                                        <path d="M50 10 L90 85 L10 85 Z" fill="none" stroke="white" stroke-width="8"/>
-                                        <circle cx="50" cy="55" r="15" fill="white"/>
+                                <div class="tfb-badge">
+                                    <svg width="40" height="35" viewBox="0 0 100 100">
+                                        <path d="M50 5 L95 85 L5 85 Z" fill="none" stroke="white" stroke-width="10"/>
+                                        <circle cx="50" cy="55" r="12" fill="white"/>
                                     </svg>
                                     <div class="tfb-text">TOTAL FIRE BAN<br>IN FORCE</div>
                                 </div>` : ''}
                         </div>`;
                 }
                 document.getElementById('content').innerHTML = html;
-                document.getElementById('last-update').innerText = "Last Sync: " + new Date().toLocaleTimeString();
+                document.getElementById('last-update').innerText = "LAST SYNC: " + new Date().toLocaleTimeString();
             } catch (err) {
-                document.getElementById('content').innerHTML = "Unable to load data.";
+                document.getElementById('content').innerHTML = "Unable to load live data.";
             }
         }
 
