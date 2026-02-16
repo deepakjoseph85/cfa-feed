@@ -3,43 +3,78 @@
 <head>
     <meta charset="UTF-8">
     <style>
-        body { background-color: black; color: white; font-family: 'Segoe UI', Arial, sans-serif; padding: 40px; text-align: center; }
-        .header { font-size: 2.5em; font-weight: bold; margin-bottom: 50px; border-bottom: 2px solid #333; padding-bottom: 10px; }
-        .container { display: flex; justify-content: center; gap: 60px; }
-        .day-column { flex: 1; max-width: 250px; }
-        .label { font-size: 1.8em; margin-bottom: 20px; color: #ccc; }
-        .map-box { 
-            width: 150px; height: 100px; margin: 0 auto 20px auto; 
-            border-radius: 10px; display: flex; align-items: center; justify-content: center;
-            font-size: 0.9em; font-weight: bold; color: black;
+        body { 
+            background-color: black; 
+            color: white; 
+            font-family: 'Helvetica Neue', Arial, sans-serif; 
+            padding: 20px;
         }
-        .rating { font-size: 2em; font-weight: 900; letter-spacing: 1px; text-transform: uppercase; }
         
-        /* CFA Official Colors */
+        .header { 
+            font-size: 1.5em; 
+            font-weight: bold; 
+            margin-bottom: 30px; 
+            text-align: left;
+        }
+
+        .container { 
+            display: flex; 
+            justify-content: flex-start; 
+            gap: 40px; 
+        }
+
+        .day-column { 
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            min-width: 120px;
+        }
+
+        .label { 
+            font-size: 1.2em; 
+            margin-bottom: 10px; 
+            color: #fff; 
+        }
+
+        /* Styling to mimic the map icons in your image */
+        .map-box { 
+            width: 70px; 
+            height: 45px; 
+            margin-bottom: 15px;
+            border-radius: 4px;
+            /* Using a clip-path to give it that 'district map' jagged look */
+            clip-path: polygon(10% 0%, 90% 10%, 100% 70%, 80% 100%, 20% 90%, 0% 50%);
+        }
+
+        .rating { 
+            font-size: 1.3em; 
+            font-weight: 500; 
+            letter-spacing: 0.5px;
+        }
+        
+        /* AFDRS Standard Colors */
         .MODERATE { color: #78be20; } 
         .HIGH { color: #ffb81c; } 
-        .EXTREME { color: #e03c31; } 
-        .CATASTROPHIC { color: white; background-color: #000; border: 2px solid red; }
+        .EXTREME { color: #ff8200; } /* Adjusted to the orange in your image */
+        .CATASTROPHIC { color: #e03c31; }
 
         .bg-MODERATE { background-color: #78be20; }
         .bg-HIGH { background-color: #ffb81c; }
-        .bg-EXTREME { background-color: #e03c31; }
-        .bg-CATASTROPHIC { background-color: #000; border: 2px solid white; }
+        .bg-EXTREME { background-color: #ff8200; }
+        .bg-CATASTROPHIC { background-color: #e03c31; }
     </style>
 </head>
 <body>
-    <div class="header">South West Fire Danger</div>
-    <div id="content" class="container">Loading live CFA data...</div>
+    <div class="header">Fire Danger Ratings</div>
+    <div id="content" class="container">Loading...</div>
 
     <script>
         async function fetchFeed() {
             const rssUrl = "https://www.cfa.vic.gov.au/cfa/rssfeed/southwest-firedistrict_rss.xml";
-            // Using a different proxy service (Corsproxy.io)
             const proxy = "https://corsproxy.io/?" + encodeURIComponent(rssUrl);
             
             try {
                 const response = await fetch(proxy);
-                if (!response.ok) throw new Error('Network response was not ok');
                 const text = await response.text();
                 const parser = new DOMParser();
                 const xml = parser.parseFromString(text, "text/xml");
@@ -49,32 +84,27 @@
                 const labels = ["Today", "Tomorrow", "Overmorrow"];
                 
                 for (let i = 0; i < 3; i++) {
-                    const ratingText = items[i].querySelector("description").textContent.trim().toUpperCase();
+                    const desc = items[i].querySelector("description").textContent.toUpperCase();
                     
-                    let colorClass = "HIGH";
-                    if (ratingText.includes("EXTREME")) colorClass = "EXTREME";
-                    if (ratingText.includes("MODERATE")) colorClass = "MODERATE";
-                    if (ratingText.includes("CATASTROPHIC")) colorClass = "CATASTROPHIC";
-                    if (ratingText.includes("NO RATING")) colorClass = "MODERATE";
+                    let ratingType = "HIGH";
+                    if (desc.includes("EXTREME")) ratingType = "EXTREME";
+                    else if (desc.includes("MODERATE")) ratingType = "MODERATE";
+                    else if (desc.includes("CATASTROPHIC")) ratingType = "CATASTROPHIC";
 
                     html += `
                         <div class="day-column">
                             <div class="label">${labels[i]}</div>
-                            <div class="map-box bg-${colorClass}">
-                                SOUTH WEST
-                            </div>
-                            <div class="rating ${colorClass}">${ratingText}</div>
+                            <div class="map-box bg-${ratingType}"></div>
+                            <div class="rating ${ratingType}">${ratingType}</div>
                         </div>`;
                 }
                 document.getElementById('content').innerHTML = html;
             } catch (err) {
-                console.error(err);
-                document.getElementById('content').innerHTML = "Unable to reach CFA. Check connection or try refreshing.";
+                document.getElementById('content').innerHTML = "Ratings unavailable.";
             }
         }
 
         fetchFeed();
-        // Refresh every 30 minutes
         setInterval(fetchFeed, 1800000);
     </script>
 </body>
