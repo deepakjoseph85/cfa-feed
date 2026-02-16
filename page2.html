@@ -3,86 +3,82 @@
 <head>
     <meta charset="UTF-8">
     <style>
-        body { background-color: black; color: white; font-family: Arial, sans-serif; padding: 40px; }
-        .header { font-size: 24px; font-weight: bold; margin-bottom: 50px; }
-        .container { display: flex; gap: 80px; align-items: flex-start; }
-        .day-column { width: 180px; text-align: left; }
-        .label { font-size: 22px; margin-bottom: 15px; }
+        body { background-color: black; color: white; font-family: 'Segoe UI', Arial, sans-serif; padding: 40px; text-align: center; }
+        .header { font-size: 2.5em; font-weight: bold; margin-bottom: 50px; border-bottom: 2px solid #333; padding-bottom: 10px; }
+        .container { display: flex; justify-content: center; gap: 40px; flex-wrap: wrap; }
+        .day-column { flex: 1; min-width: 200px; max-width: 300px; }
+        .label { font-size: 1.8em; margin-bottom: 20px; color: #ccc; }
         
-        /* Map Structure */
-        .map-box { position: relative; width: 160px; height: 120px; margin-bottom: 25px; }
-        .map-svg { width: 100%; height: 100%; overflow: visible; }
-        
-        /* 3D Depth Layer (Grey) */
-        .depth { fill: #808080; transform: translate(6px, 6px); }
-        
-        /* Top Layer (Dynamic Color) */
-        .face { stroke: #444; stroke-width: 1px; }
-        .internal-lines { fill: none; stroke: rgba(0,0,0,0.4); stroke-width: 1.5px; }
+        /* Map Image Styling */
+        .map-img { 
+            width: 100%; 
+            max-width: 220px; 
+            height: auto; 
+            border-radius: 8px; 
+            margin-bottom: 15px;
+            border: 1px solid #444;
+        }
 
-        .rating-text { font-size: 24px; font-weight: bold; margin-top: 10px; }
+        .rating { font-size: 1.5em; font-weight: 900; letter-spacing: 1px; text-transform: uppercase; }
         
-        /* Official Rating Colors */
-        .MODERATE { fill: #ffcc00; color: #ffcc00; }
-        .HIGH { fill: #ffcc00; color: #ffcc00; }
-        .EXTREME { fill: #ff8800; color: #ff8800; }
-        .CATASTROPHIC { fill: #000; color: white; }
+        /* CFA Official Text Colors */
+        .MODERATE { color: #78be20; } 
+        .HIGH { color: #ffb81c; } 
+        .EXTREME { color: #e03c31; } 
+        .CATASTROPHIC { color: #ffffff; text-shadow: 0 0 5px red; }
+        .NO-RATING { color: #aaa; }
     </style>
 </head>
 <body>
-    <div class="header">Fire Danger Ratings</div>
-    <div id="content" class="container">Connecting to Live Feed...</div>
+    <div class="header">South West Fire Danger</div>
+    <div id="content" class="container">Loading live CFA data...</div>
 
     <script>
-        // Exact geographic trace of the South West Fire District outline
-        const swOutline = "M10,50 L8,60 L10,80 L20,95 L35,105 L55,115 L80,110 L110,120 L130,110 L140,100 L155,100 L160,80 L145,65 L155,50 L155,15 L140,10 L115,15 L110,30 L90,25 L75,30 L65,25 L50,30 L35,35 L20,40 Z";
-        
-        // Exact internal boundary lines for the local regions
-        const swBoundaries = "M35,35 L48,65 L10,50 M48,65 L60,115 M48,65 L100,60 L100,28 M100,60 L130,110 M110,30 L110,60 M155,65 L130,68";
-
-        const generateMap = (colorClass) => `
-            <div class="map-box">
-                <svg class="map-svg" viewBox="0 0 170 130">
-                    <path class="depth" d="${swOutline}" />
-                    <path class="face ${colorClass}" d="${swOutline}" />
-                    <path class="internal-lines" d="${swBoundaries}" />
-                </svg>
-            </div>`;
-
-        async function updateDashboard() {
+        async function fetchFeed() {
             const rssUrl = "https://www.cfa.vic.gov.au/cfa/rssfeed/southwest-firedistrict_rss.xml";
             const proxy = "https://corsproxy.io/?" + encodeURIComponent(rssUrl);
             
             try {
                 const response = await fetch(proxy);
+                if (!response.ok) throw new Error('Network response was not ok');
                 const text = await response.text();
-                const items = new DOMParser().parseFromString(text, "text/xml").querySelectorAll("item");
+                const parser = new DOMParser();
+                const xml = parser.parseFromString(text, "text/xml");
+                const items = xml.querySelectorAll("item");
                 
                 let html = '';
                 const labels = ["Today", "Tomorrow", "Overmorrow"];
                 
                 for (let i = 0; i < 3; i++) {
-                    const desc = items[i].querySelector("description").textContent.toUpperCase();
-                    let status = "HIGH";
-                    if (desc.includes("EXTREME")) status = "EXTREME";
-                    if (desc.includes("CATASTROPHIC")) status = "CATASTROPHIC";
-                    if (desc.includes("MODERATE")) status = "MODERATE";
+                    const ratingText = items[i].querySelector("description").textContent.trim().toUpperCase();
+                    
+                    // Determine image filename and class based on rating
+                    let imgName = "norating.gif";
+                    let colorClass = "NO-RATING";
+
+                    if (ratingText.includes("CATASTROPHIC")) { imgName = "catastrophic.gif"; colorClass = "CATASTROPHIC"; }
+                    else if (ratingText.includes("EXTREME")) { imgName = "extreme.gif"; colorClass = "EXTREME"; }
+                    else if (ratingText.includes("HIGH")) { imgName = "high.gif"; colorClass = "HIGH"; }
+                    else if (ratingText.includes("MODERATE")) { imgName = "moderate.gif"; colorClass = "MODERATE"; }
+
+                    const imgUrl = `https://www.cfa.vic.gov.au/cfa/images/fdr/southwest/${imgName}`;
 
                     html += `
                         <div class="day-column">
                             <div class="label">${labels[i]}</div>
-                            ${generateMap(status)}
-                            <div class="rating-text ${status}">${status}</div>
+                            <img src="${imgUrl}" alt="${ratingText}" class="map-img">
+                            <div class="rating ${colorClass}">${ratingText}</div>
                         </div>`;
                 }
                 document.getElementById('content').innerHTML = html;
             } catch (err) {
-                document.getElementById('content').innerHTML = "CFA Data currently unavailable.";
+                console.error(err);
+                document.getElementById('content').innerHTML = "Unable to reach CFA data. Please try again later.";
             }
         }
 
-        updateDashboard();
-        setInterval(updateDashboard, 1800000);
+        fetchFeed();
+        setInterval(fetchFeed, 1800000); // Refresh every 30 mins
     </script>
 </body>
 </html>
