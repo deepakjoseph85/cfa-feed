@@ -1,117 +1,51 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
     <meta charset="UTF-8">
-    <title>CFA South West Fire Danger</title>
     <style>
-        body { 
-            background-color: black; 
-            color: white; 
-            font-family: 'Segoe UI', Arial, sans-serif; 
-            margin: 0;
-            padding: 20px;
-            text-align: center;
-        }
-
-        .header { 
-            font-size: 2.5em; 
-            font-weight: bold; 
-            margin-bottom: 40px; 
-        }
-
-        /* Horizontal Layout */
-        .container { 
-            display: flex; 
-            justify-content: space-around; 
-            align-items: flex-start;
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
-        .day-column { 
-            flex: 1; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-        }
-
-        .label { 
-            font-size: 2em; 
-            margin-bottom: 20px; 
-            font-weight: 500;
-        }
-
-        .map-icon {
-            width: 250px;
+        body { background-color: black; color: white; font-family: 'Segoe UI', Arial, sans-serif; padding: 40px; text-align: center; }
+        .header { font-size: 2.5em; font-weight: bold; margin-bottom: 50px; border-bottom: 2px solid #333; padding-bottom: 10px; }
+        .container { display: flex; justify-content: center; gap: 40px; }
+        .day-column { flex: 1; max-width: 300px; display: flex; flex-direction: column; align-items: center; }
+        .label { font-size: 2em; margin-bottom: 20px; color: #fff; font-weight: bold; }
+        
+        /* Custom Map Silhouette Style */
+        .map-silhouette {
+            width: 250px; 
             height: 180px;
-            margin-bottom: 20px;
+            background-image: url('image_41d5c2.png'); /* Ensure this filename matches your GitHub upload */
             background-size: contain;
             background-repeat: no-repeat;
             background-position: center;
-            /* Placeholder: replace with your map-southwest.png link */
-            background-image: url('map-southwest.png');
+            margin-bottom: 15px;
         }
 
-        .rating-text { 
-            font-size: 2.2em; 
-            font-weight: 900; 
-            text-transform: uppercase; 
-            margin-bottom: 15px; 
-        }
+        .rating { font-size: 2.2em; font-weight: 900; text-transform: uppercase; margin-bottom: 15px; }
 
-        /* The Ban Notice Box */
-        .tfb-box {
-            background-color: #1a1a1a;
-            padding: 10px 15px;
-            border-radius: 4px;
-            min-height: 80px;
-            width: 90%;
-            display: none; /* Hidden by default */
-            flex-direction: column;
-            justify-content: center;
-        }
+        /* Total Fire Ban Notice Styles */
+        .tfb-area { min-height: 120px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .tfb-box { background-color: #1a1a1a; padding: 15px; border-radius: 5px; display: none; width: 90%; }
+        .tfb-active { display: block; }
+        .tfb-text { font-size: 1.1em; font-weight: bold; line-height: 1.2; }
+        .tfb-icon { color: #e03c31; font-size: 1.4em; vertical-align: middle; margin-right: 5px; }
+        .restrictions { color: #2e5bff; text-decoration: underline; font-size: 0.9em; margin-top: 8px; font-weight: bold; }
 
-        .tfb-active { display: flex; }
-
-        .tfb-title {
-            font-size: 1.1em;
-            font-weight: bold;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-
-        .restrictions {
-            color: #3498db;
-            text-decoration: underline;
-            font-size: 1em;
-            margin-top: 5px;
-            font-weight: bold;
-        }
-
-        /* CFA Colors and Map Filters */
-        .MODERATE { color: #78be20; } 
-        .HIGH { color: #ffb81c; } 
+        /* CFA Colors and Map Tinting */
+        .MODERATE { color: #78be20; }
+        .HIGH { color: #ffb81c; }
         .EXTREME { color: #e67e22; }
 
+        /* Dynamic Tinting for your yellow map icon */
         .map-MODERATE { filter: invert(61%) sepia(54%) saturate(515%) hue-rotate(42deg) brightness(94%) contrast(91%); }
-        .map-HIGH { filter: invert(79%) sepia(65%) saturate(558%) hue-rotate(352deg) brightness(101%) contrast(105%); }
+        .map-HIGH { filter: none; } /* Default is your yellow image */
         .map-EXTREME { filter: invert(58%) sepia(93%) saturate(1200%) hue-rotate(355deg) brightness(95%) contrast(105%); }
 
-        .footer { 
-            margin-top: 60px; 
-            font-size: 1em; 
-            color: #777; 
-        }
+        .footer { margin-top: 60px; font-size: 1em; color: #666; border-top: 1px solid #222; padding-top: 15px; }
     </style>
 </head>
 <body>
     <div class="header">South West Fire Danger</div>
-    
-    <div id="content" class="container">
-        </div>
-
+    <div id="content" class="container">Connecting to live feed...</div>
     <div id="footer" class="footer"></div>
 
     <script>
@@ -123,7 +57,7 @@
             });
         }
 
-        async function updateDisplay() {
+        async function fetchFeed() {
             const rssUrl = "https://www.cfa.vic.gov.au/cfa/rssfeed/southwest-firedistrict_rss.xml";
             const proxy = "https://corsproxy.io/?" + encodeURIComponent(rssUrl);
             
@@ -137,40 +71,41 @@
                 let html = '';
                 const labels = ["Today", "Tomorrow", "Overmorrow"];
                 
-                items.forEach((item, i) => {
-                    if (i > 2) return;
-                    const desc = item.querySelector("description").textContent.toUpperCase();
-                    const title = item.querySelector("title").textContent.toUpperCase();
+                for (let i = 0; i < 3; i++) {
+                    const desc = items[i].querySelector("description").textContent.trim().toUpperCase();
+                    const title = items[i].querySelector("title").textContent.toUpperCase();
                     
                     let rating = "MODERATE";
                     if (desc.includes("EXTREME")) rating = "EXTREME";
                     else if (desc.includes("HIGH")) rating = "HIGH";
 
+                    // Logic for Total Fire Ban
                     const isBan = (title.includes("TOTAL FIRE BAN") || desc.includes("TOTAL FIRE BAN")) && !desc.includes("NOT CURRENTLY");
 
                     html += `
                         <div class="day-column">
                             <div class="label">${labels[i]}</div>
-                            <div class="map-icon map-${rating}"></div>
-                            <div class="rating-text ${rating}">${rating}</div>
-                            <div class="tfb-box ${isBan ? 'tfb-active' : ''}">
-                                <div class="tfb-title" style="color: ${rating === 'EXTREME' ? '#e67e22' : '#ffb81c'}">
-                                    <span style="color:#e03c31">🚫</span> TOTAL FIRE BAN IN FORCE
+                            <div class="map-silhouette map-${rating}"></div>
+                            <div class="rating ${rating}">${rating}</div>
+                            <div class="tfb-area">
+                                <div class="tfb-box ${isBan ? 'tfb-active' : ''}">
+                                    <div class="tfb-text" style="color: ${rating === 'EXTREME' ? '#e67e22' : '#ffb81c'}">
+                                        <span class="tfb-icon">🚫</span> TOTAL FIRE BAN IN FORCE
+                                    </div>
+                                    <div class="restrictions">RESTRICTIONS APPLY</div>
                                 </div>
-                                <div class="restrictions">RESTRICTIONS APPLY</div>
                             </div>
                         </div>`;
-                });
-                
+                }
                 document.getElementById('content').innerHTML = html;
                 document.getElementById('footer').innerHTML = `Forecast issued: ${formatAEST(pubDate)}`;
             } catch (err) {
-                document.getElementById('content').innerHTML = "Unable to load data.";
+                document.getElementById('content').innerHTML = "Unable to load CFA Feed.";
             }
         }
 
-        updateDisplay();
-        setInterval(updateDisplay, 1800000);
+        fetchFeed();
+        setInterval(fetchFeed, 1800000);
     </script>
 </body>
 </html>
