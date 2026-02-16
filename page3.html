@@ -10,14 +10,36 @@
             margin: 0; 
             padding: 40px; 
             text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
+        
+        /* Header Styling */
+        .main-header {
+            font-size: 2.8em;
+            font-weight: 800;
+            margin-bottom: 50px;
+            letter-spacing: -1px;
+            color: white;
+            text-transform: uppercase;
+            width: 100%;
+        }
+
         .container { 
             display: flex; 
             justify-content: center; 
             gap: 60px; 
             flex-wrap: wrap;
+            min-height: 400px; /* Prevents layout jump */
         }
         
+        .day-column {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
         .day-label { 
             font-size: 1.6em; 
             color: #888; 
@@ -31,6 +53,7 @@
             height: auto; 
             border-radius: 4px;
             margin-bottom: 20px;
+            border: 1px solid #222;
         }
 
         .rating { 
@@ -45,6 +68,7 @@
             font-size: 0.8em;
             color: #444;
             text-transform: uppercase;
+            width: 100%;
         }
 
         /* CFA Official Color Palette */
@@ -55,7 +79,11 @@
     </style>
 </head>
 <body>
+
+    <div class="main-header">South West Fire Danger Rating</div>
+
     <div id="content" class="container">Loading...</div>
+    
     <div id="footer" class="footer"></div>
 
     <script>
@@ -71,9 +99,9 @@
                 const xml = parser.parseFromString(text, "text/xml");
                 
                 // Extract Footer Timestamp
-                const pubDate = xml.querySelector("pubDate")?.textContent;
-                if (pubDate) {
-                    const localTime = new Date(pubDate).toLocaleString("en-AU", { 
+                const pubDateNode = xml.querySelector("pubDate");
+                if (pubDateNode) {
+                    const localTime = new Date(pubDateNode.textContent).toLocaleString("en-AU", { 
                         timeZone: "Australia/Melbourne",
                         dateStyle: "medium", 
                         timeStyle: "short" 
@@ -109,11 +137,13 @@
                 }
                 document.getElementById('content').innerHTML = html;
             } catch (err) {
+                console.error(err);
                 document.getElementById('content').innerHTML = "Feed Offline";
             }
         }
 
         fetchFeed();
+        // Refresh every 30 minutes
         setInterval(fetchFeed, 1800000);
     </script>
 </body>
