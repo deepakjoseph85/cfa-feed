@@ -1,99 +1,167 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>South West Fire Danger</title>
     <style>
         body { 
             background-color: black; 
             color: white; 
-            font-family: 'Segoe UI', Arial, sans-serif; 
-            margin: 0; 
+            font-family: 'Segoe UI', Roboto, Arial, sans-serif; 
             padding: 40px; 
-            display: flex; 
-            justify-content: center; 
+            text-align: center; 
         }
-        .container { display: flex; gap: 60px; text-align: center; }
-        
-        .day-label { 
-            font-size: 1.6em; 
-            color: #888; 
-            margin-bottom: 20px; 
-            font-weight: bold;
+        .header { 
+            font-size: 2.5em; 
+            font-weight: bold; 
+            margin-bottom: 10px; 
+            border-bottom: 2px solid #333; 
+            padding-bottom: 10px; 
+        }
+        /* Added Subheader Styling */
+        .subheader {
+            font-size: 1.2em;
+            color: #aaa;
+            margin-bottom: 40px;
             text-transform: uppercase;
         }
-
-        .map-container img { 
-            width: 220px; 
-            height: auto; 
-            border-radius: 4px;
-            margin-bottom: 20px;
+        .container { 
+            display: flex; 
+            justify-content: center; 
+            gap: 40px; 
+            flex-wrap: wrap; 
         }
-
-        .rating { 
-            font-size: 2em; 
-            font-weight: 900; 
-            text-transform: uppercase; 
-            letter-spacing: 1px;
+        .day-column { 
+            flex: 1; 
+            min-width: 200px; 
+            max-width: 300px; 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .label { 
+            font-size: 1.8em; 
+            margin-bottom: 20px; 
+            color: #ccc; 
+            text-transform: uppercase;
+            letter-spacing: 2px;
         }
         
-        /* CFA Official Color Palette */
-        .MODERATE { color: #78be20; } 
-        .HIGH { color: #ffb81c; } 
-        .EXTREME { color: #e03c31; } 
-        .CATASTROPHIC { color: white; background: red; padding: 0 10px; }
+        /* Added Rating Text Styling */
+        .rating-text {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-top: 10px;
+            letter-spacing: 1px;
+        }
+
+        .map-img { 
+            width: 100%; 
+            max-width: 250px; 
+            height: auto; 
+            border-radius: 12px; 
+            border: 1px solid #444;
+        }
+
+        .tfb-badge {
+            background-color: #e03c31;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 0.9em;
+            margin-top: 10px;
+            animation: pulse 2s infinite;
+        }
+
+        /* Added Footer Styling */
+        .footer {
+            margin-top: 50px;
+            font-size: 0.8em;
+            color: #666;
+            border-top: 1px solid #222;
+            padding-top: 20px;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+
+        #error-msg { color: #888; margin-top: 20px; font-style: italic; }
     </style>
 </head>
 <body>
-    <div id="content" class="container">Loading...</div>
+
+    <div class="header">South West</div>
+    <div class="subheader">Fire Danger Rating</div>
+    
+    <div id="content" class="container">
+        <p>Loading live CFA data...</p>
+    </div>
+
+    <div id="footer" class="footer"></div>
 
     <script>
         async function fetchFeed() {
             const rssUrl = "https://www.cfa.vic.gov.au/cfa/rssfeed/southwest-firedistrict_rss.xml";
             const proxy = "https://corsproxy.io/?" + encodeURIComponent(rssUrl);
-            const labels = ["Today", "Tomorrow", "Overmorrow"];
             
             try {
                 const response = await fetch(proxy);
+                if (!response.ok) throw new Error('Network response was not ok');
+                
                 const text = await response.text();
                 const parser = new DOMParser();
                 const xml = parser.parseFromString(text, "text/xml");
                 const items = xml.querySelectorAll("item");
                 
+                // Get the last updated time from the channel or the first item
+                const lastUpdated = xml.querySelector("pubDate") ? xml.querySelector("pubDate").textContent : "Unknown";
+                
                 let html = '';
+                const labels = ["Today", "Tomorrow", "Overmorrow"];
+                
                 for (let i = 0; i < 3; i++) {
-                    const descContent = items[i].querySelector("description").textContent;
+                    if (!items[i]) break;
+
+                    const fullDescription = items[i].querySelector("description").textContent.trim().toUpperCase();
                     
-                    // 1. Extract the map image URL
-                    const imgMatch = descContent.match(/src="([^"]+)"/);
-                    const imgSrc = imgMatch ? imgMatch[1] : "";
-                    
-                    // 2. Extract and simplify the rating text
-                    let ratingText = descContent.replace(/<[^>]*>/g, '').trim().toUpperCase();
-                    
-                    // Clean up "NO RATING" or long descriptions to just the core word
-                    let displayRating = "HIGH"; // Default
-                    if (ratingText.includes("CATASTROPHIC")) displayRating = "CATASTROPHIC";
-                    else if (ratingText.includes("EXTREME")) displayRating = "EXTREME";
-                    else if (ratingText.includes("MODERATE")) displayRating = "MODERATE";
-                    else if (ratingText.includes("NO RATING")) displayRating = "MODERATE";
+                    let imgName = "norating.gif";
+                    let ratingLabel = "NO RATING";
+
+                    if (fullDescription.includes("CATASTROPHIC")) { imgName = "catastrophic.gif"; ratingLabel = "CATASTROPHIC"; }
+                    else if (fullDescription.includes("EXTREME")) { imgName = "extreme.gif"; ratingLabel = "EXTREME"; }
+                    else if (fullDescription.includes("HIGH")) { imgName = "high.gif"; ratingLabel = "HIGH"; }
+                    else if (fullDescription.includes("MODERATE")) { imgName = "moderate.gif"; ratingLabel = "MODERATE"; }
+
+                    const isTFB = fullDescription.includes("IS A DAY OF TOTAL FIRE BAN") || 
+                                 (fullDescription.includes("TOTAL FIRE BAN") && !fullDescription.includes("NOT CURRENTLY"));
+
+                    const imgUrl = `https://www.cfa.vic.gov.au/cfa/images/fdr/southwest/${imgName}`;
 
                     html += `
                         <div class="day-column">
-                            <div class="day-label">${labels[i]}</div>
-                            <div class="map-container">
-                                <img src="${imgSrc}" alt="Map">
-                            </div>
-                            <div class="rating ${displayRating}">${displayRating}</div>
+                            <div class="label">${labels[i]}</div>
+                            <img src="${imgUrl}" alt="${ratingLabel}" class="map-img">
+                            <div class="rating-text">${ratingLabel}</div>
+                            ${isTFB ? '<div class="tfb-badge">TOTAL FIRE BAN</div>' : ''}
                         </div>`;
                 }
+                
                 document.getElementById('content').innerHTML = html;
+                document.getElementById('footer').innerHTML = `Last Updated: ${lastUpdated}`;
+
             } catch (err) {
-                document.getElementById('content').innerHTML = "Feed Offline";
+                console.error(err);
+                document.getElementById('content').innerHTML = "<div id='error-msg'>Unable to reach CFA data.</div>";
             }
         }
 
         fetchFeed();
-        setInterval(fetchFeed, 1800000);
+        setInterval(fetchFeed, 1800000); 
     </script>
 </body>
 </html>
