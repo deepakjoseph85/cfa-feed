@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>South West Fire Danger Dashboard</title>
+    <title>South West Fire Danger</title>
     <style>
         body { 
             background-color: black; 
@@ -16,71 +16,66 @@
         .header { 
             font-size: 2.5em; 
             font-weight: bold; 
-            margin-bottom: 30px; 
-            border-bottom: 2px solid #333; 
-            padding-bottom: 10px; 
+            margin-bottom: 10px; 
         }
 
         .update-time {
-            font-size: 0.9em;
-            color: #888;
-            margin-bottom: 40px;
+            font-size: 0.8em;
+            color: #666;
+            margin-bottom: 50px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
 
         .container { 
             display: flex; 
             justify-content: center; 
-            gap: 40px; 
+            gap: 80px; 
             flex-wrap: wrap;
         }
 
         .day-column { 
             flex: 1; 
-            min-width: 250px; 
-            max-width: 300px;
-            background: #111;
-            padding: 20px;
-            border-radius: 15px;
-            border: 1px solid #222;
+            max-width: 250px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
 
         .label { 
-            font-size: 1.8em; 
-            margin-bottom: 20px; 
-            color: #ccc; 
-            font-weight: 300;
+            font-size: 2em; 
+            margin-bottom: 25px; 
+            color: white; 
+            font-weight: bold;
+            text-transform: uppercase;
         }
 
         .map-box { 
-            width: 180px; 
-            height: 120px; 
-            margin: 0 auto 20px auto; 
-            border-radius: 10px; 
+            width: 140px; 
+            height: 90px; 
+            margin-bottom: 20px; 
+            border-radius: 8px; 
             display: flex; 
             align-items: center; 
             justify-content: center;
-            font-size: 1em; 
+            font-size: 0.8em; 
             font-weight: bold; 
             color: black;
-            text-shadow: 0px 0px 2px rgba(255,255,255,0.5);
         }
 
         .rating { 
-            font-size: 1.8em; 
+            font-size: 1.6em; 
             font-weight: 900; 
             letter-spacing: 1px; 
-            text-transform: uppercase; 
-            min-height: 2.2em;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            text-transform: uppercase;
+            margin-bottom: 15px;
         }
 
         /* TFB Logo Styling */
         .tfb-container {
-            margin-top: 25px;
-            padding: 15px;
-            background-color: #d1190d; /* CFA Red */
+            width: 120px;
+            padding: 10px;
+            background-color: #d1190d; 
             border: 2px solid white;
             border-radius: 10px;
             animation: pulse 2s infinite;
@@ -88,23 +83,23 @@
 
         .tfb-label {
             font-weight: 900;
-            font-size: 1.1em;
+            font-size: 0.8em;
             color: white;
-            margin-top: 8px;
-            line-height: 1.2;
+            margin-top: 5px;
+            line-height: 1.1;
         }
 
         @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.03); }
-            100% { transform: scale(1); }
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.05); opacity: 0.9; }
+            100% { transform: scale(1); opacity: 1; }
         }
 
         /* CFA Official Colors */
         .MODERATE { color: #78be20; } 
         .HIGH { color: #ffb81c; } 
         .EXTREME { color: #e03c31; } 
-        .CATASTROPHIC { color: white; background-color: #000; border: 2px solid red; }
+        .CATASTROPHIC { color: white; border: 2px solid red; padding: 5px; }
 
         .bg-MODERATE { background-color: #78be20; }
         .bg-HIGH { background-color: #ffb81c; }
@@ -115,11 +110,9 @@
 <body>
 
     <div class="header">South West Fire Danger</div>
-    <div id="last-update" class="update-time">Initializing...</div>
+    <div id="last-update" class="update-time">Loading...</div>
     
-    <div id="content" class="container">
-        Loading live CFA data...
-    </div>
+    <div id="content" class="container"></div>
 
     <script>
         async function fetchFeed() {
@@ -128,7 +121,6 @@
             
             try {
                 const response = await fetch(proxy);
-                if (!response.ok) throw new Error('Network response was not ok');
                 const text = await response.text();
                 const parser = new DOMParser();
                 const xml = parser.parseFromString(text, "text/xml");
@@ -139,9 +131,9 @@
                 
                 for (let i = 0; i < 3; i++) {
                     const description = items[i].querySelector("description").textContent.toUpperCase();
-                    const ratingText = description.replace("SOUTH WEST:", "").trim();
+                    // Clean the text to remove the "SOUTH WEST:" prefix
+                    const ratingText = description.split(":")[1]?.trim() || description;
                     
-                    // Logic to detect Total Fire Ban
                     const isTFB = description.includes("TOTAL FIRE BAN") || description.includes("TFB");
 
                     let colorClass = "HIGH";
@@ -156,12 +148,12 @@
                             <div class="map-box bg-${colorClass}">
                                 SOUTH WEST
                             </div>
-                            <div class="rating ${colorClass}">${ratingText}</div>
+                            <div class="rating ${colorClass}">${ratingText.replace('TOTAL FIRE BAN IN FORCE', '').trim()}</div>
                             
                             ${isTFB ? `
                                 <div class="tfb-container">
                                     <img src="https://www.cfa.vic.gov.au/assets/images/total-fire-ban-logo.png" 
-                                         alt="TFB Logo" width="80">
+                                         alt="TFB Logo" width="60">
                                     <div class="tfb-label">TOTAL FIRE BAN<br>IN FORCE</div>
                                 </div>
                             ` : ''}
@@ -169,18 +161,14 @@
                 }
                 
                 document.getElementById('content').innerHTML = html;
-                document.getElementById('last-update').innerText = "Last Updated: " + new Date().toLocaleTimeString();
+                document.getElementById('last-update').innerText = "Last Sync: " + new Date().toLocaleTimeString();
                 
             } catch (err) {
-                console.error(err);
-                document.getElementById('content').innerHTML = "Unable to reach CFA. Check connection or try refreshing.";
+                document.getElementById('content').innerHTML = "Unable to reach CFA data.";
             }
         }
 
-        // Initial fetch
         fetchFeed();
-        
-        // Refresh every 30 minutes
         setInterval(fetchFeed, 1800000);
     </script>
 </body>
