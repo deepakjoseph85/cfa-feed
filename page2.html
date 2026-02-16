@@ -1,131 +1,59 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>South West Fire Danger Dashboard</title>
     <style>
-        body { 
-            background-color: black; 
-            color: white; 
-            font-family: 'Segoe UI', Arial, sans-serif; 
-            padding: 40px; 
-            text-align: center; 
-        }
-        .header { 
-            font-size: 2.5em; 
-            font-weight: bold; 
-            margin-bottom: 50px; 
-            border-bottom: 2px solid #333; 
-            padding-bottom: 10px; 
-        }
-        .container { 
-            display: flex; 
-            justify-content: center; 
-            gap: 60px; 
-            flex-wrap: wrap;
-        }
-        .day-column { 
-            flex: 1; 
-            max-width: 280px; 
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        .label { 
-            font-size: 1.8em; 
-            margin-bottom: 20px; 
-            color: #ccc; 
-            font-weight: bold;
-        }
-        
-        /* Map Styling */
-        .district-map {
-            width: 200px;
-            height: auto;
-            margin-bottom: 20px;
-            filter: drop-shadow(0 0 10px rgba(255,255,255,0.1));
-            transition: fill 0.5s ease;
-        }
-
-        .rating { 
-            font-size: 2em; 
-            font-weight: 900; 
-            letter-spacing: 1px; 
-            text-transform: uppercase; 
-        }
-        
+        body { background: black; color: white; font-family: 'Segoe UI', Arial, sans-serif; text-align: center; padding: 20px; }
+        .container { display: flex; justify-content: center; gap: 40px; margin-top: 30px; }
+        .day { flex: 1; max-width: 250px; }
+        .label { font-size: 2em; font-weight: bold; margin-bottom: 10px; }
+        .rating { font-size: 1.8em; font-weight: 900; margin-bottom: 15px; }
+        /* 3D Map Effect */
+        .map-svg { width: 220px; height: auto; filter: drop-shadow(4px 6px 0px #333); transition: fill 0.5s; }
         /* CFA Rating Colors */
-        .MODERATE { fill: #78be20; color: #78be20; } 
-        .HIGH { fill: #ffb81c; color: #ffb81c; } 
-        .EXTREME { fill: #e03c31; color: #e03c31; } 
-        .CATASTROPHIC { fill: #000; color: #fb4f4f; stroke: #fb4f4f; stroke-width: 2px; }
-        .NO-RATING { fill: #333; color: #666; }
+        .HIGH { color: #ffb81c; fill: #ffb81c; }
+        .EXTREME { color: #e03c31; fill: #e03c31; }
+        .MODERATE { color: #78be20; fill: #78be20; }
+        .CATASTROPHIC { color: #fb4f4f; fill: #000; stroke: red; stroke-width: 2; }
     </style>
 </head>
 <body>
-
-    <div class="header">South West Fire Danger</div>
-    <div id="content" class="container">Loading live CFA data...</div>
+    <h1>South West Fire Danger</h1>
+    <div id="content" class="container">Loading live data...</div>
 
     <script>
-        // This function returns an SVG path representing the South West District silhouette
-        function getMapSVG(colorClass) {
-            return `
-            <svg class="district-map ${colorClass}" viewBox="0 0 250 180" xmlns="http://www.w3.org/2000/svg">
-                <path d="M20,60 L60,20 L180,30 L230,80 L210,140 L150,160 L60,155 L20,110 Z" 
-                      stroke="white" stroke-width="2" />
-                <text x="50%" y="55%" dominant-baseline="middle" text-anchor="middle" 
-                      fill="black" font-size="16" font-weight="bold" font-family="Arial">
-                    SOUTH WEST
-                </text>
+        const drawMap = (cls) => `
+            <svg class="map-svg ${cls}" viewBox="0 0 300 220" xmlns="http://www.w3.org/2000/svg">
+                <path d="M40,50 L240,40 L270,100 L250,180 L200,210 L80,205 L40,140 L30,80 Z" stroke="white" stroke-width="2" />
             </svg>`;
-        }
 
         async function fetchFeed() {
-            const rssUrl = "https://www.cfa.vic.gov.au/cfa/rssfeed/southwest-firedistrict_rss.xml";
-            const proxy = "https://corsproxy.io/?" + encodeURIComponent(rssUrl);
-            
             try {
-                const response = await fetch(proxy);
-                if (!response.ok) throw new Error('Network response error');
+                const rssUrl = "https://www.cfa.vic.gov.au/cfa/rssfeed/southwest-firedistrict_rss.xml";
+                const response = await fetch("https://corsproxy.io/?" + encodeURIComponent(rssUrl));
                 const text = await response.text();
-                const parser = new DOMParser();
-                const xml = parser.parseFromString(text, "text/xml");
+                const xml = new DOMParser().parseFromString(text, "text/xml");
                 const items = xml.querySelectorAll("item");
                 
                 let html = '';
-                const labels = ["Today", "Tomorrow", "Overmorrow"];
-                
-                for (let i = 0; i < 3; i++) {
-                    const ratingRaw = items[i].querySelector("description").textContent.trim().toUpperCase();
-                    
-                    // Simple logic to determine color class
-                    let colorClass = "HIGH";
-                    if (ratingRaw.includes("EXTREME")) colorClass = "EXTREME";
-                    else if (ratingRaw.includes("MODERATE")) colorClass = "MODERATE";
-                    else if (ratingRaw.includes("CATASTROPHIC")) colorClass = "CATASTROPHIC";
-                    else if (ratingRaw.includes("NO RATING")) colorClass = "NO-RATING";
-
-                    // Clean up the text for display (remove "SOUTH WEST:" prefix if present)
-                    const cleanRating = ratingRaw.replace("SOUTH WEST:", "").trim();
+                ["TODAY", "TOMORROW", "OVERMORROW"].forEach((label, i) => {
+                    const desc = items[i].querySelector("description").textContent.toUpperCase();
+                    const match = desc.match(/(CATASTROPHIC|EXTREME|HIGH|MODERATE|NO RATING)/);
+                    const rating = match ? match[0] : "MODERATE";
+                    const cls = rating.replace(" ", "-");
 
                     html += `
-                        <div class="day-column">
-                            <div class="label">${labels[i]}</div>
-                            ${getMapSVG(colorClass)}
-                            <div class="rating ${colorClass}">${cleanRating}</div>
+                        <div class="day">
+                            <div class="rating ${cls}">${rating}</div>
+                            ${drawMap(cls)}
+                            <div class="label" style="margin-top:15px">${label}</div>
                         </div>`;
-                }
+                });
                 document.getElementById('content').innerHTML = html;
-            } catch (err) {
-                console.error(err);
-                document.getElementById('content').innerHTML = "Unable to reach CFA data.";
-            }
+            } catch (e) { document.getElementById('content').innerHTML = "Feed Error"; }
         }
-
         fetchFeed();
-        setInterval(fetchFeed, 1800000); // Auto-refresh every 30 mins
+        setInterval(fetchFeed, 1800000);
     </script>
 </body>
 </html>
