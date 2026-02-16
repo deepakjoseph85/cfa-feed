@@ -9,35 +9,34 @@
             font-family: 'Segoe UI', Arial, sans-serif; 
             margin: 0; 
             padding: 40px; 
-            text-align: center;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
         }
         
-        /* Header Styling */
+        /* Header Aligned Top Left */
         .main-header {
-            font-size: 2.8em;
+            font-size: 2.2em;
             font-weight: 800;
             margin-bottom: 50px;
             letter-spacing: -1px;
             color: white;
             text-transform: uppercase;
-            width: 100%;
+            text-align: left; /* Forces alignment to the left */
+            border-left: 5px solid #e03c31; /* Added a small red accent */
+            padding-left: 15px;
         }
 
         .container { 
             display: flex; 
-            justify-content: center; 
+            justify-content: center; /* Keeps the cards centered in the remaining space */
             gap: 60px; 
             flex-wrap: wrap;
-            min-height: 400px; /* Prevents layout jump */
+            min-height: 400px;
         }
         
         .day-column {
             display: flex;
             flex-direction: column;
             align-items: center;
+            text-align: center;
         }
 
         .day-label { 
@@ -53,7 +52,6 @@
             height: auto; 
             border-radius: 4px;
             margin-bottom: 20px;
-            border: 1px solid #222;
         }
 
         .rating { 
@@ -68,7 +66,7 @@
             font-size: 0.8em;
             color: #444;
             text-transform: uppercase;
-            width: 100%;
+            text-align: left; /* Footer stays left with the header */
         }
 
         /* CFA Official Color Palette */
@@ -82,7 +80,7 @@
 
     <div class="main-header">South West Fire Danger Rating</div>
 
-    <div id="content" class="container">Loading...</div>
+    <div id="content" class="container">Loading live data...</div>
     
     <div id="footer" class="footer"></div>
 
@@ -116,7 +114,6 @@
                     if (!items[i]) break;
                     const desc = items[i].querySelector("description").textContent.toUpperCase();
                     
-                    // Determine Rating and Image
                     let rating = "MODERATE";
                     let imgName = "moderate.gif";
 
@@ -137,13 +134,11 @@
                 }
                 document.getElementById('content').innerHTML = html;
             } catch (err) {
-                console.error(err);
-                document.getElementById('content').innerHTML = "Feed Offline";
+                document.getElementById('content').innerHTML = "Feed Offline - Check Connection";
             }
         }
 
         fetchFeed();
-        // Refresh every 30 minutes
         setInterval(fetchFeed, 1800000);
     </script>
 </body>
