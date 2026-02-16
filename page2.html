@@ -3,81 +3,78 @@
 <head>
     <meta charset="UTF-8">
     <style>
-        body { background: black; color: white; font-family: 'Segoe UI', Arial, sans-serif; text-align: center; padding: 20px; }
-        .container { display: flex; justify-content: center; gap: 40px; margin-top: 20px; }
-        .day { flex: 1; max-width: 280px; display: flex; flex-direction: column; align-items: center; }
-        
-        /* Typography */
-        .rating { font-size: 2.8em; font-weight: 900; margin-bottom: 10px; text-transform: uppercase; }
-        .label { font-size: 2.2em; font-weight: bold; margin-top: 15px; letter-spacing: 1px; color: white; }
-        
-        /* 3D Map Styling */
-        .map-svg { 
-            width: 260px; height: auto; 
-            filter: drop-shadow(6px 8px 0px #222); /* Creates the 3D depth */
+        body { background-color: black; color: white; font-family: 'Segoe UI', Arial, sans-serif; padding: 40px; text-align: center; }
+        .header { font-size: 2.5em; font-weight: bold; margin-bottom: 50px; border-bottom: 2px solid #333; padding-bottom: 10px; }
+        .container { display: flex; justify-content: center; gap: 60px; }
+        .day-column { flex: 1; max-width: 250px; }
+        .label { font-size: 1.8em; margin-bottom: 20px; color: #ccc; }
+        .map-box { 
+            width: 150px; height: 100px; margin: 0 auto 20px auto; 
+            border-radius: 10px; display: flex; align-items: center; justify-content: center;
+            font-size: 0.9em; font-weight: bold; color: black;
         }
-        .map-border { fill: none; stroke: white; stroke-width: 2; }
-        .map-lines { fill: none; stroke: rgba(0,0,0,0.3); stroke-width: 1.5; }
+        .rating { font-size: 2em; font-weight: 900; letter-spacing: 1px; text-transform: uppercase; }
+        
+        /* CFA Official Colors */
+        .MODERATE { color: #78be20; } 
+        .HIGH { color: #ffb81c; } 
+        .EXTREME { color: #e03c31; } 
+        .CATASTROPHIC { color: white; background-color: #000; border: 2px solid red; }
 
-        /* CFA Colors */
-        .MODERATE { color: #78be20; fill: #78be20; }
-        .HIGH { color: #ffb81c; fill: #ffb81c; }
-        .EXTREME { color: #e03c31; fill: #e03c31; }
-        .CATASTROPHIC { color: #fb4f4f; fill: #000; }
-
-        /* TFB Warning Badge */
-        .tfb-badge {
-            background: #d1190d; border: 2px solid white; border-radius: 8px;
-            padding: 12px; margin-top: 20px; width: 200px; font-weight: 900; line-height: 1.2;
-        }
+        .bg-MODERATE { background-color: #78be20; }
+        .bg-HIGH { background-color: #ffb81c; }
+        .bg-EXTREME { background-color: #e03c31; }
+        .bg-CATASTROPHIC { background-color: #000; border: 2px solid white; }
     </style>
 </head>
 <body>
-    <h1 style="font-size: 3em; margin-bottom: 5px;">South West Fire Danger</h1>
-    <div id="sync" style="color: #666; font-size: 0.9em; margin-bottom: 30px;">SYNCING LIVE DATA...</div>
-    
-    <div id="content" class="container"></div>
+    <div class="header">South West Fire Danger</div>
+    <div id="content" class="container">Loading live CFA data...</div>
 
     <script>
-        // Coded drawing of the South West District with internal lines
-        const drawMap = (cls) => `
-            <svg class="map-svg ${cls}" viewBox="0 0 300 240" xmlns="http://www.w3.org/2000/svg">
-                <path class="map-border" d="M45,42 L70,35 L120,38 L180,30 L220,35 L245,60 L240,110 L250,140 L240,170 L210,195 L160,205 L110,210 L60,195 L35,165 L42,120 L30,85 Z" fill="inherit" />
-                <path class="map-lines" d="M120,38 L115,110 M180,30 L170,105 M115,110 L170,105 M170,105 L240,110 M115,110 L42,120 M170,105 L210,195" />
-            </svg>`;
-
         async function fetchFeed() {
+            const rssUrl = "https://www.cfa.vic.gov.au/cfa/rssfeed/southwest-firedistrict_rss.xml";
+            // Using a different proxy service (Corsproxy.io)
+            const proxy = "https://corsproxy.io/?" + encodeURIComponent(rssUrl);
+            
             try {
-                const rssUrl = "https://www.cfa.vic.gov.au/cfa/rssfeed/southwest-firedistrict_rss.xml";
-                const response = await fetch("https://corsproxy.io/?" + encodeURIComponent(rssUrl));
+                const response = await fetch(proxy);
+                if (!response.ok) throw new Error('Network response was not ok');
                 const text = await response.text();
-                const xml = new DOMParser().parseFromString(text, "text/xml");
+                const parser = new DOMParser();
+                const xml = parser.parseFromString(text, "text/xml");
                 const items = xml.querySelectorAll("item");
                 
                 let html = '';
-                const labels = ["TODAY", "TOMORROW", "OVERMORROW"];
-
-                labels.forEach((label, i) => {
-                    const desc = items[i].querySelector("description").textContent.toUpperCase();
-                    // Extract only the official rating word
-                    const match = desc.match(/(CATASTROPHIC|EXTREME|HIGH|MODERATE)/);
-                    const rating = match ? match[0] : "MODERATE";
-                    const isTFB = desc.includes("TOTAL FIRE BAN");
+                const labels = ["Today", "Tomorrow", "Overmorrow"];
+                
+                for (let i = 0; i < 3; i++) {
+                    const ratingText = items[i].querySelector("description").textContent.trim().toUpperCase();
+                    
+                    let colorClass = "HIGH";
+                    if (ratingText.includes("EXTREME")) colorClass = "EXTREME";
+                    if (ratingText.includes("MODERATE")) colorClass = "MODERATE";
+                    if (ratingText.includes("CATASTROPHIC")) colorClass = "CATASTROPHIC";
+                    if (ratingText.includes("NO RATING")) colorClass = "MODERATE";
 
                     html += `
-                        <div class="day">
-                            <div class="rating ${rating}">${rating}</div>
-                            ${drawMap(rating)}
-                            <div class="label">${label}</div>
-                            ${isTFB ? `<div class="tfb-badge">TOTAL FIRE BAN<br>IN FORCE</div>` : ''}
+                        <div class="day-column">
+                            <div class="label">${labels[i]}</div>
+                            <div class="map-box bg-${colorClass}">
+                                SOUTH WEST
+                            </div>
+                            <div class="rating ${colorClass}">${ratingText}</div>
                         </div>`;
-                });
+                }
                 document.getElementById('content').innerHTML = html;
-                document.getElementById('sync').innerText = "LAST SYNC: " + new Date().toLocaleTimeString();
-            } catch (e) { document.getElementById('content').innerHTML = "Live Feed Error"; }
+            } catch (err) {
+                console.error(err);
+                document.getElementById('content').innerHTML = "Unable to reach CFA. Check connection or try refreshing.";
+            }
         }
 
         fetchFeed();
+        // Refresh every 30 minutes
         setInterval(fetchFeed, 1800000);
     </script>
 </body>
