@@ -3,72 +3,61 @@
 <head>
     <meta charset="UTF-8">
     <style>
-        body { background-color: #000; color: white; font-family: 'Segoe UI', Arial, sans-serif; padding: 20px; text-align: center; }
-        .header { font-size: 2em; font-weight: bold; margin-bottom: 30px; border-bottom: 1px solid #333; padding-bottom: 10px; }
-        .container { display: flex; justify-content: center; gap: 40px; flex-wrap: wrap; }
-        
-        .day-column { flex: 1; min-width: 200px; max-width: 300px; margin-bottom: 30px; }
-        .label { font-size: 1.5em; margin-bottom: 15px; color: #aaa; text-transform: uppercase; letter-spacing: 2px; }
-        
-        /* Map Box Styling */
+        body { background-color: black; color: white; font-family: 'Segoe UI', Arial, sans-serif; padding: 40px; text-align: center; }
+        .header { font-size: 2.5em; font-weight: bold; margin-bottom: 50px; border-bottom: 2px solid #333; padding-bottom: 10px; }
+        .container { display: flex; justify-content: center; gap: 60px; }
+        .day-column { flex: 1; max-width: 250px; }
+        .label { font-size: 1.8em; margin-bottom: 20px; color: #ccc; }
         .map-box { 
-            width: 180px; height: 120px; margin: 0 auto 15px auto; 
-            border-radius: 8px; display: flex; align-items: center; justify-content: center;
-            font-size: 1em; font-weight: bold; color: black;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-            transition: transform 0.3s ease;
+            width: 150px; height: 100px; margin: 0 auto 20px auto; 
+            border-radius: 10px; display: flex; align-items: center; justify-content: center;
+            font-size: 0.9em; font-weight: bold; color: black;
         }
-
-        .rating { font-size: 1.8em; font-weight: 900; letter-spacing: 1px; }
+        .rating { font-size: 2em; font-weight: 900; letter-spacing: 1px; text-transform: uppercase; }
         
-        /* CFA Color Palette */
+        /* CFA Official Colors */
         .MODERATE { color: #78be20; } 
         .HIGH { color: #ffb81c; } 
         .EXTREME { color: #e03c31; } 
-        .CATASTROPHIC { color: #ffffff; text-shadow: 0 0 5px red; }
+        .CATASTROPHIC { color: white; background-color: #000; border: 2px solid red; }
 
         .bg-MODERATE { background-color: #78be20; }
         .bg-HIGH { background-color: #ffb81c; }
         .bg-EXTREME { background-color: #e03c31; }
-        .bg-CATASTROPHIC { 
-            background-color: #000; 
-            border: 4px solid #e03c31; 
-            color: white; 
-            background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(224, 60, 49, 0.2) 10px, rgba(224, 60, 49, 0.2) 20px);
-        }
+        .bg-CATASTROPHIC { background-color: #000; border: 2px solid white; }
     </style>
 </head>
 <body>
-    <div class="header">SOUTH WEST DISTRICT FIRE DANGER</div>
+    <div class="header">South West Fire Danger</div>
     <div id="content" class="container">Loading live CFA data...</div>
 
     <script>
         async function fetchFeed() {
+            // Direct URL without proxy
             const rssUrl = "https://www.cfa.vic.gov.au/cfa/rssfeed/southwest-firedistrict_rss.xml";
-            const proxy = "https://corsproxy.io/?" + encodeURIComponent(rssUrl);
             
             try {
-                const response = await fetch(proxy);
-                if (!response.ok) throw new Error('Network error');
+                const response = await fetch(rssUrl);
+                if (!response.ok) throw new Error('CORS or Network error');
+                
                 const text = await response.text();
                 const parser = new DOMParser();
                 const xml = parser.parseFromString(text, "text/xml");
                 const items = xml.querySelectorAll("item");
                 
                 let html = '';
-                const labels = ["Today", "Tomorrow", "Next Day"];
+                const labels = ["Today", "Tomorrow", "Overmorrow"];
                 
                 for (let i = 0; i < 3; i++) {
-                    const description = items[i].querySelector("description").textContent.toUpperCase();
+                    if(!items[i]) break; // Safety check if fewer than 3 days exist
                     
-                    // Logic to extract the specific rating from the description string
-                    let ratingText = "NO RATING";
-                    if (description.includes("CATASTROPHIC")) ratingText = "CATASTROPHIC";
-                    else if (description.includes("EXTREME")) ratingText = "EXTREME";
-                    else if (description.includes("HIGH")) ratingText = "HIGH";
-                    else if (description.includes("MODERATE")) ratingText = "MODERATE";
-
-                    let colorClass = ratingText.replace(" ", "");
+                    const ratingText = items[i].querySelector("description").textContent.trim().toUpperCase();
+                    
+                    let colorClass = "HIGH";
+                    if (ratingText.includes("EXTREME")) colorClass = "EXTREME";
+                    if (ratingText.includes("MODERATE")) colorClass = "MODERATE";
+                    if (ratingText.includes("CATASTROPHIC")) colorClass = "CATASTROPHIC";
+                    if (ratingText.includes("NO RATING")) colorClass = "MODERATE";
 
                     html += `
                         <div class="day-column">
@@ -81,12 +70,14 @@
                 }
                 document.getElementById('content').innerHTML = html;
             } catch (err) {
-                document.getElementById('content').innerHTML = "Unable to reach CFA data. Please refresh.";
+                console.error("Fetch error:", err);
+                document.getElementById('content').innerHTML = 
+                    `<div style="color: #666;">Unable to load data.<br><small>This may be due to browser CORS restrictions.</small></div>`;
             }
         }
 
         fetchFeed();
-        setInterval(fetchFeed, 1800000); // 30 min refresh
+        setInterval(fetchFeed, 1800000);
     </script>
 </body>
 </html>
