@@ -26,18 +26,7 @@
             width: 220px; 
             height: auto; 
             border-radius: 4px;
-        }
-
-        /* TFB Icon Styling with Blinking Animation */
-        .tfb-status { height: 80px; margin: 10px 0; display: flex; align-items: center; justify-content: center; }
-        .tfb-status img { 
-            height: 100%; 
-            width: auto; 
-            animation: blinker 1.5s linear infinite;
-        }
-
-        @keyframes blinker {
-            50% { opacity: 0; }
+            margin-bottom: 20px;
         }
 
         .rating { 
@@ -51,12 +40,60 @@
         .MODERATE { color: #78be20; } 
         .HIGH { color: #ffb81c; } 
         .EXTREME { color: #e03c31; } 
-        .CATASTROPHIC { color: white; background: red; padding: 5px 10px; border-radius: 4px; }
+        .CATASTROPHIC { color: white; background: red; padding: 0 10px; }
     </style>
 </head>
 <body>
-    <div id="content" class="container">Loading live CFA data...</div>
+    <div id="content" class="container">Loading...</div>
 
     <script>
         async function fetchFeed() {
-            const rssUrl = "https://www.
+            const rssUrl = "https://www.cfa.vic.gov.au/cfa/rssfeed/southwest-firedistrict_rss.xml";
+            const proxy = "https://corsproxy.io/?" + encodeURIComponent(rssUrl);
+            const labels = ["Today", "Tomorrow", "Overmorrow"];
+            
+            try {
+                const response = await fetch(proxy);
+                const text = await response.text();
+                const parser = new DOMParser();
+                const xml = parser.parseFromString(text, "text/xml");
+                const items = xml.querySelectorAll("item");
+                
+                let html = '';
+                for (let i = 0; i < 3; i++) {
+                    const descContent = items[i].querySelector("description").textContent;
+                    
+                    // 1. Extract the map image URL
+                    const imgMatch = descContent.match(/src="([^"]+)"/);
+                    const imgSrc = imgMatch ? imgMatch[1] : "";
+                    
+                    // 2. Extract and simplify the rating text
+                    let ratingText = descContent.replace(/<[^>]*>/g, '').trim().toUpperCase();
+                    
+                    // Clean up "NO RATING" or long descriptions to just the core word
+                    let displayRating = "HIGH"; // Default
+                    if (ratingText.includes("CATASTROPHIC")) displayRating = "CATASTROPHIC";
+                    else if (ratingText.includes("EXTREME")) displayRating = "EXTREME";
+                    else if (ratingText.includes("MODERATE")) displayRating = "MODERATE";
+                    else if (ratingText.includes("NO RATING")) displayRating = "MODERATE";
+
+                    html += `
+                        <div class="day-column">
+                            <div class="day-label">${labels[i]}</div>
+                            <div class="map-container">
+                                <img src="${imgSrc}" alt="Map">
+                            </div>
+                            <div class="rating ${displayRating}">${displayRating}</div>
+                        </div>`;
+                }
+                document.getElementById('content').innerHTML = html;
+            } catch (err) {
+                document.getElementById('content').innerHTML = "Feed Offline";
+            }
+        }
+
+        fetchFeed();
+        setInterval(fetchFeed, 1800000);
+    </script>
+</body>
+</html>
