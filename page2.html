@@ -3,88 +3,86 @@
 <head>
     <meta charset="UTF-8">
     <style>
-        body { background-color: black; color: white; font-family: 'Arial Black', Gadget, sans-serif; padding: 40px; }
-        .header { font-size: 26px; margin-bottom: 40px; font-weight: 900; }
-        .container { display: flex; gap: 80px; }
-        .day-column { width: 180px; }
-        .label { font-size: 24px; margin-bottom: 10px; font-family: Arial, sans-serif; font-weight: normal; }
+        body { background-color: black; color: white; font-family: Arial, sans-serif; padding: 40px; }
+        .header { font-size: 24px; font-weight: bold; margin-bottom: 50px; }
+        .container { display: flex; gap: 80px; align-items: flex-start; }
+        .day-column { width: 180px; text-align: left; }
+        .label { font-size: 22px; margin-bottom: 15px; }
         
-        /* The Exact Map Shape & 3D Effect */
-        .map-container { position: relative; width: 160px; height: 120px; margin-bottom: 20px; }
+        /* Map Structure */
+        .map-box { position: relative; width: 160px; height: 120px; margin-bottom: 25px; }
         .map-svg { width: 100%; height: 100%; overflow: visible; }
         
-        /* The Grey 3D Underlay */
-        .map-shadow { fill: #717171; transform: translate(5px, 6px); }
+        /* 3D Depth Layer (Grey) */
+        .depth { fill: #808080; transform: translate(6px, 6px); }
         
-        /* The Foreground Map Layer */
-        .map-face { stroke: #444; stroke-width: 1px; transition: fill 0.3s; }
-        .lga-boundaries { fill: none; stroke: rgba(0,0,0,0.4); stroke-width: 1.2px; }
+        /* Top Layer (Dynamic Color) */
+        .face { stroke: #444; stroke-width: 1px; }
+        .internal-lines { fill: none; stroke: rgba(0,0,0,0.4); stroke-width: 1.5px; }
 
-        .rating-label { font-size: 24px; font-weight: 900; letter-spacing: 1px; }
+        .rating-text { font-size: 24px; font-weight: bold; margin-top: 10px; }
         
-        /* Official Color Palette */
-        .MODERATE { fill: #f3d022; color: #f3d022; } /* Golden yellow as per image */
-        .HIGH { fill: #f3d022; color: #f3d022; }
-        .EXTREME { fill: #ef7d00; color: #ef7d00; }
-        .CATASTROPHIC { fill: #000; color: white; stroke: red; }
+        /* Official Rating Colors */
+        .MODERATE { fill: #ffcc00; color: #ffcc00; }
+        .HIGH { fill: #ffcc00; color: #ffcc00; }
+        .EXTREME { fill: #ff8800; color: #ff8800; }
+        .CATASTROPHIC { fill: #000; color: white; }
     </style>
 </head>
 <body>
     <div class="header">Fire Danger Ratings</div>
-    <div id="content" class="container">Connecting to CFA...</div>
+    <div id="content" class="container">Connecting to Live Feed...</div>
 
     <script>
-        // Exact trace of the South West District from your provided image
-        const exactPath = "M10,48 L8,55 L8,85 L18,90 L35,105 L50,110 L70,105 L95,115 L115,110 L125,95 L145,95 L150,75 L135,60 L145,45 L145,15 L125,10 L110,15 L105,30 L85,25 L75,30 L65,25 L50,30 L35,35 L20,38 Z";
+        // Exact geographic trace of the South West Fire District outline
+        const swOutline = "M10,50 L8,60 L10,80 L20,95 L35,105 L55,115 L80,110 L110,120 L130,110 L140,100 L155,100 L160,80 L145,65 L155,50 L155,15 L140,10 L115,15 L110,30 L90,25 L75,30 L65,25 L50,30 L35,35 L20,40 Z";
         
-        // Exact internal boundary lines from your image
-        const internalLines = "M35,35 L45,65 L10,48 M45,65 L55,108 M45,65 L95,58 L95,28 M95,58 L125,95 M105,30 L105,58 M145,62 L120,65";
+        // Exact internal boundary lines for the local regions
+        const swBoundaries = "M35,35 L48,65 L10,50 M48,65 L60,115 M48,65 L100,60 L100,28 M100,60 L130,110 M110,30 L110,60 M155,65 L130,68";
 
-        const createMap = (colorClass) => `
-            <div class="map-container">
-                <svg class="map-svg" viewBox="0 0 160 120">
-                    <path class="map-shadow" d="${exactPath}" />
-                    <path class="map-face ${colorClass}" d="${exactPath}" />
-                    <path class="lga-boundaries" d="${internalLines}" />
+        const generateMap = (colorClass) => `
+            <div class="map-box">
+                <svg class="map-svg" viewBox="0 0 170 130">
+                    <path class="depth" d="${swOutline}" />
+                    <path class="face ${colorClass}" d="${swOutline}" />
+                    <path class="internal-lines" d="${swBoundaries}" />
                 </svg>
             </div>`;
 
-        async function fetchFeed() {
+        async function updateDashboard() {
             const rssUrl = "https://www.cfa.vic.gov.au/cfa/rssfeed/southwest-firedistrict_rss.xml";
             const proxy = "https://corsproxy.io/?" + encodeURIComponent(rssUrl);
             
             try {
                 const response = await fetch(proxy);
                 const text = await response.text();
-                const parser = new DOMParser();
-                const xml = parser.parseFromString(text, "text/xml");
-                const items = xml.querySelectorAll("item");
+                const items = new DOMParser().parseFromString(text, "text/xml").querySelectorAll("item");
                 
                 let html = '';
                 const labels = ["Today", "Tomorrow", "Overmorrow"];
                 
                 for (let i = 0; i < 3; i++) {
                     const desc = items[i].querySelector("description").textContent.toUpperCase();
-                    let rating = "HIGH";
-                    if (desc.includes("EXTREME")) rating = "EXTREME";
-                    if (desc.includes("CATASTROPHIC")) rating = "CATASTROPHIC";
-                    if (desc.includes("MODERATE")) rating = "MODERATE";
+                    let status = "HIGH";
+                    if (desc.includes("EXTREME")) status = "EXTREME";
+                    if (desc.includes("CATASTROPHIC")) status = "CATASTROPHIC";
+                    if (desc.includes("MODERATE")) status = "MODERATE";
 
                     html += `
                         <div class="day-column">
                             <div class="label">${labels[i]}</div>
-                            ${createMap(rating)}
-                            <div class="rating-label ${rating}">${rating}</div>
+                            ${generateMap(status)}
+                            <div class="rating-text ${status}">${status}</div>
                         </div>`;
                 }
                 document.getElementById('content').innerHTML = html;
             } catch (err) {
-                document.getElementById('content').innerHTML = "Unable to load CFA data.";
+                document.getElementById('content').innerHTML = "CFA Data currently unavailable.";
             }
         }
 
-        fetchFeed();
-        setInterval(fetchFeed, 1800000);
+        updateDashboard();
+        setInterval(updateDashboard, 1800000);
     </script>
 </body>
 </html>
