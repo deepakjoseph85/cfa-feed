@@ -8,42 +8,47 @@
             color: white; 
             font-family: 'Segoe UI', Arial, sans-serif; 
             margin: 0; 
-            padding: 20px; 
+            padding: 40px; 
             display: flex; 
             justify-content: center; 
         }
-        .container { display: flex; gap: 30px; text-align: center; }
+        .container { display: flex; gap: 50px; text-align: center; }
         
-        /* Ensure the map image fits properly */
+        .day-label { 
+            font-size: 1.8em; 
+            color: #ccc; 
+            margin-bottom: 15px; 
+            font-weight: bold;
+        }
+
         .map-container img { 
-            width: 200px; 
+            width: 180px; 
             height: auto; 
-            border-radius: 8px;
-            display: block;
-            margin-bottom: 10px;
+            border-radius: 5px;
+            margin-bottom: 15px;
         }
 
         .rating { 
-            font-size: 1.4em; 
+            font-size: 1.6em; 
             font-weight: 900; 
             text-transform: uppercase; 
-            letter-spacing: 1px;
         }
         
         /* CFA Color Coding */
         .MODERATE { color: #78be20; } 
         .HIGH { color: #ffb81c; } 
         .EXTREME { color: #e03c31; } 
-        .CATASTROPHIC { color: white; border: 1px solid red; padding: 2px; }
+        .CATASTROPHIC { color: white; border: 2px solid red; padding: 2px; }
     </style>
 </head>
 <body>
-    <div id="content" class="container">Loading...</div>
+    <div id="content" class="container">Loading live CFA data...</div>
 
     <script>
         async function fetchFeed() {
             const rssUrl = "https://www.cfa.vic.gov.au/cfa/rssfeed/southwest-firedistrict_rss.xml";
             const proxy = "https://corsproxy.io/?" + encodeURIComponent(rssUrl);
+            const labels = ["Today", "Tomorrow", "Overmorrow"];
             
             try {
                 const response = await fetch(proxy);
@@ -56,11 +61,11 @@
                 for (let i = 0; i < 3; i++) {
                     const descContent = items[i].querySelector("description").textContent;
                     
-                    // Extract the image source from the description string
+                    // Extract image URL
                     const imgMatch = descContent.match(/src="([^"]+)"/);
                     const imgSrc = imgMatch ? imgMatch[1] : "";
                     
-                    // Clean the text to get only the rating (e.g., "MODERATE")
+                    // Clean text to get only the rating
                     const ratingText = descContent.replace(/<[^>]*>/g, '').trim().toUpperCase();
                     
                     let colorClass = "HIGH";
@@ -71,20 +76,21 @@
 
                     html += `
                         <div class="day-column">
+                            <div class="day-label">${labels[i]}</div>
                             <div class="map-container">
-                                <img src="${imgSrc}" alt="Fire Map">
+                                <img src="${imgSrc}" alt="Map">
                             </div>
                             <div class="rating ${colorClass}">${ratingText}</div>
                         </div>`;
                 }
                 document.getElementById('content').innerHTML = html;
             } catch (err) {
-                document.getElementById('content').innerHTML = "Error loading CFA data.";
+                document.getElementById('content').innerHTML = "Unable to load data.";
             }
         }
 
         fetchFeed();
-        setInterval(fetchFeed, 1800000);
+        setInterval(fetchFeed, 1800000); // 30 min refresh
     </script>
 </body>
 </html>
