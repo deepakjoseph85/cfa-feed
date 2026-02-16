@@ -16,7 +16,7 @@
         .header { 
             font-size: 2.5em; 
             font-weight: bold; 
-            margin-bottom: 10px; 
+            margin-bottom: 5px; 
         }
 
         .update-time {
@@ -30,7 +30,7 @@
         .container { 
             display: flex; 
             justify-content: center; 
-            gap: 80px; 
+            gap: 60px; 
             flex-wrap: wrap;
         }
 
@@ -44,41 +44,39 @@
 
         .label { 
             font-size: 2em; 
-            margin-bottom: 25px; 
+            margin-bottom: 20px; 
             color: white; 
             font-weight: bold;
             text-transform: uppercase;
         }
 
-        .map-box { 
-            width: 140px; 
-            height: 90px; 
-            margin-bottom: 20px; 
-            border-radius: 8px; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center;
-            font-size: 0.8em; 
-            font-weight: bold; 
-            color: black;
+        /* The Map Graphic Replacement */
+        .map-graphic {
+            width: 160px;
+            height: 120px;
+            margin-bottom: 15px;
+            display: block;
+            object-fit: contain;
+            /* Filter to apply rating colors to a grayscale map image if needed */
         }
 
         .rating { 
-            font-size: 1.6em; 
+            font-size: 1.8em; 
             font-weight: 900; 
             letter-spacing: 1px; 
             text-transform: uppercase;
-            margin-bottom: 15px;
+            margin-bottom: 10px;
+            min-height: 1.2em;
         }
 
         /* TFB Logo Styling */
         .tfb-container {
-            width: 120px;
+            width: 130px;
             padding: 10px;
             background-color: #d1190d; 
             border: 2px solid white;
             border-radius: 10px;
-            animation: pulse 2s infinite;
+            margin-top: 10px;
         }
 
         .tfb-label {
@@ -89,32 +87,32 @@
             line-height: 1.1;
         }
 
-        @keyframes pulse {
-            0% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.05); opacity: 0.9; }
-            100% { transform: scale(1); opacity: 1; }
-        }
-
-        /* CFA Official Colors */
+        /* Rating Colors */
         .MODERATE { color: #78be20; } 
         .HIGH { color: #ffb81c; } 
         .EXTREME { color: #e03c31; } 
-        .CATASTROPHIC { color: white; border: 2px solid red; padding: 5px; }
-
-        .bg-MODERATE { background-color: #78be20; }
-        .bg-HIGH { background-color: #ffb81c; }
-        .bg-EXTREME { background-color: #e03c31; }
-        .bg-CATASTROPHIC { background-color: #000; border: 2px solid white; }
+        .CATASTROPHIC { color: white; background-color: black; border: 2px solid red; padding: 2px 10px; }
+        .NO-RATING { color: #666; }
     </style>
 </head>
 <body>
 
     <div class="header">South West Fire Danger</div>
-    <div id="last-update" class="update-time">Loading...</div>
+    <div id="last-update" class="update-time">Syncing...</div>
     
     <div id="content" class="container"></div>
 
     <script>
+        // Mapping rating types to the CFA district map image with the corresponding highlight
+        // Note: Replace these URLs with your actual hosted map assets if available
+        const MAP_ASSETS = {
+            MODERATE: "https://www.cfa.vic.gov.au/assets/images/fire-danger-ratings/map-south-west-moderate.png",
+            HIGH: "https://www.cfa.vic.gov.au/assets/images/fire-danger-ratings/map-south-west-high.png",
+            EXTREME: "https://www.cfa.vic.gov.au/assets/images/fire-danger-ratings/map-south-west-extreme.png",
+            CATASTROPHIC: "https://www.cfa.vic.gov.au/assets/images/fire-danger-ratings/map-south-west-catastrophic.png",
+            DEFAULT: "https://www.cfa.vic.gov.au/assets/images/fire-danger-ratings/map-south-west-moderate.png"
+        };
+
         async function fetchFeed() {
             const rssUrl = "https://www.cfa.vic.gov.au/cfa/rssfeed/southwest-firedistrict_rss.xml";
             const proxy = "https://corsproxy.io/?" + encodeURIComponent(rssUrl);
@@ -131,24 +129,24 @@
                 
                 for (let i = 0; i < 3; i++) {
                     const description = items[i].querySelector("description").textContent.toUpperCase();
-                    // Clean the text to remove the "SOUTH WEST:" prefix
-                    const ratingText = description.split(":")[1]?.trim() || description;
                     
-                    const isTFB = description.includes("TOTAL FIRE BAN") || description.includes("TFB");
+                    // Improved parsing to get JUST the rating (e.g., "HIGH")
+                    let ratingMatch = description.match(/(MODERATE|HIGH|EXTREME|CATASTROPHIC|NO RATING)/);
+                    let ratingText = ratingMatch ? ratingMatch[0] : "NO RATING";
+                    
+                    const isTFB = description.includes("TOTAL FIRE BAN");
+                    let colorClass = ratingText.replace(" ", "-");
 
-                    let colorClass = "HIGH";
-                    if (ratingText.includes("EXTREME")) colorClass = "EXTREME";
-                    else if (ratingText.includes("MODERATE")) colorClass = "MODERATE";
-                    else if (ratingText.includes("CATASTROPHIC")) colorClass = "CATASTROPHIC";
-                    else if (ratingText.includes("NO RATING")) colorClass = "MODERATE";
+                    // Select map image based on rating
+                    let mapImg = MAP_ASSETS[colorClass.replace("-", "")] || MAP_ASSETS.DEFAULT;
 
                     html += `
                         <div class="day-column">
                             <div class="label">${labels[i]}</div>
-                            <div class="map-box bg-${colorClass}">
-                                SOUTH WEST
-                            </div>
-                            <div class="rating ${colorClass}">${ratingText.replace('TOTAL FIRE BAN IN FORCE', '').trim()}</div>
+                            
+                            <img src="${mapImg}" class="map-graphic" alt="South West Map">
+                            
+                            <div class="rating ${colorClass}">${ratingText}</div>
                             
                             ${isTFB ? `
                                 <div class="tfb-container">
@@ -164,7 +162,7 @@
                 document.getElementById('last-update').innerText = "Last Sync: " + new Date().toLocaleTimeString();
                 
             } catch (err) {
-                document.getElementById('content').innerHTML = "Unable to reach CFA data.";
+                document.getElementById('content').innerHTML = "Unable to load CFA data.";
             }
         }
 
