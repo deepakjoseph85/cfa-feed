@@ -14,20 +14,20 @@
         
         .label { font-size: 2.2em; margin-bottom: 15px; font-weight: bold; text-transform: uppercase; }
 
-        /* The 3D Map Image */
+        /* Embedded 3D Map Styling */
         .map-img {
             width: 220px;
             height: auto;
             margin-bottom: 15px;
-            filter: drop-shadow(0px 4px 8px rgba(0,0,0,0.5));
+            filter: drop-shadow(0px 5px 10px rgba(0,0,0,0.8));
         }
 
         .rating { font-size: 2em; font-weight: 900; letter-spacing: 1px; text-transform: uppercase; margin-top: 10px; }
 
-        /* Total Fire Ban Badge */
+        /* TFB Badge - Built with CSS/SVG so it never breaks */
         .tfb-badge {
             margin-top: 20px;
-            padding: 10px 15px;
+            padding: 15px;
             background-color: #d1190d; 
             border: 2px solid white;
             border-radius: 8px;
@@ -35,10 +35,17 @@
             flex-direction: column;
             align-items: center;
             width: 160px;
+            animation: pulse 2s infinite;
         }
-        .tfb-text { font-weight: 900; font-size: 0.9em; color: white; margin-top: 5px; line-height: 1.1; }
+        .tfb-text { font-weight: 900; font-size: 0.9em; color: white; margin-top: 8px; line-height: 1.2; }
 
-        /* Color Coding */
+        @keyframes pulse {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(1.03); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        /* CFA Rating Colors */
         .MODERATE { color: #78be20; } 
         .HIGH { color: #ffb81c; } 
         .EXTREME { color: #e03c31; } 
@@ -53,6 +60,10 @@
     <div id="content" class="container"></div>
 
     <script>
+        // This is a direct data URI for the map to prevent "Image Not Found" errors
+        const MAP_DATA_URI = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAKAAAAB4CAYAAABv3z9RAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAZ0lEQVR4nO3BMQEAAADCoPVPbQwfoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAeDAWvAAB77977AAAAABJRU5ErkJggg=="; 
+        // Note: You can replace the string above with a real base64 of your image_4251c2.png 
+
         async function fetchFeed() {
             const rssUrl = "https://www.cfa.vic.gov.au/cfa/rssfeed/southwest-firedistrict_rss.xml";
             const proxy = "https://corsproxy.io/?" + encodeURIComponent(rssUrl);
@@ -69,8 +80,6 @@
                 
                 for (let i = 0; i < 3; i++) {
                     const descRaw = items[i].querySelector("description").textContent.toUpperCase();
-                    
-                    // Extracts only the rating (HIGH, EXTREME, etc.)
                     const ratingMatch = descRaw.match(/(CATASTROPHIC|EXTREME|HIGH|MODERATE|NO RATING)/);
                     const ratingText = ratingMatch ? ratingMatch[0] : "MODERATE";
                     
@@ -81,15 +90,17 @@
                         <div class="day-column">
                             <div class="label">${labels[i]}</div>
                             
-                            <img src="https://i.postimg.cc/mD8pXqXz/south-west-3d.png" class="map-img" alt="Map">
+                            <img src="https://i.postimg.cc/mD8pXqXz/south-west-3d.png" 
+                                 onerror="this.src='${MAP_DATA_URI}'" 
+                                 class="map-img" alt="Map">
                             
                             <div class="rating ${colorClass}">${ratingText}</div>
                             
                             ${isTFB ? `
                                 <div class="tfb-badge">
-                                    <svg width="40" height="35" viewBox="0 0 100 100">
-                                        <path d="M50 5 L95 85 L5 85 Z" fill="none" stroke="white" stroke-width="10"/>
-                                        <circle cx="50" cy="55" r="12" fill="white"/>
+                                    <svg width="45" height="40" viewBox="0 0 100 100">
+                                        <path d="M50 5 L95 90 L5 90 Z" fill="none" stroke="white" stroke-width="8"/>
+                                        <circle cx="50" cy="58" r="12" fill="white"/>
                                     </svg>
                                     <div class="tfb-text">TOTAL FIRE BAN<br>IN FORCE</div>
                                 </div>` : ''}
