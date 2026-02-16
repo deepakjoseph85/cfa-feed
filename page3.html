@@ -3,26 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <style>
-        body { background-color: black; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; height: 100vh; }
-        .container { display: flex; gap: 20px; }
+        body { 
+            background-color: black; 
+            color: white; 
+            font-family: 'Segoe UI', Arial, sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+            display: flex; 
+            justify-content: center; 
+        }
+        .container { display: flex; gap: 30px; text-align: center; }
         
-        /* Pure visual box - no text */
-        .map-box { 
-            width: 150px; 
-            height: 100px; 
-            border-radius: 10px; 
-            transition: background-color 0.5s ease;
+        /* Ensure the map image fits properly */
+        .map-container img { 
+            width: 200px; 
+            height: auto; 
+            border-radius: 8px;
+            display: block;
+            margin-bottom: 10px;
         }
 
-        /* CFA Official Colors */
-        .bg-MODERATE { background-color: #78be20; }
-        .bg-HIGH { background-color: #ffb81c; }
-        .bg-EXTREME { background-color: #e03c31; }
-        .bg-CATASTROPHIC { background-color: #000; border: 3px solid #e03c31; box-sizing: border-box; }
+        .rating { 
+            font-size: 1.4em; 
+            font-weight: 900; 
+            text-transform: uppercase; 
+            letter-spacing: 1px;
+        }
+        
+        /* CFA Color Coding */
+        .MODERATE { color: #78be20; } 
+        .HIGH { color: #ffb81c; } 
+        .EXTREME { color: #e03c31; } 
+        .CATASTROPHIC { color: white; border: 1px solid red; padding: 2px; }
     </style>
 </head>
 <body>
-    <div id="content" class="container"></div>
+    <div id="content" class="container">Loading...</div>
 
     <script>
         async function fetchFeed() {
@@ -37,21 +53,33 @@
                 const items = xml.querySelectorAll("item");
                 
                 let html = '';
-                // Loop through Today, Tomorrow, Overmorrow
                 for (let i = 0; i < 3; i++) {
-                    const description = items[i].querySelector("description").textContent.trim().toUpperCase();
+                    const descContent = items[i].querySelector("description").textContent;
+                    
+                    // Extract the image source from the description string
+                    const imgMatch = descContent.match(/src="([^"]+)"/);
+                    const imgSrc = imgMatch ? imgMatch[1] : "";
+                    
+                    // Clean the text to get only the rating (e.g., "MODERATE")
+                    const ratingText = descContent.replace(/<[^>]*>/g, '').trim().toUpperCase();
                     
                     let colorClass = "HIGH";
-                    if (description.includes("EXTREME")) colorClass = "EXTREME";
-                    if (description.includes("MODERATE")) colorClass = "MODERATE";
-                    if (description.includes("CATASTROPHIC")) colorClass = "CATASTROPHIC";
-                    if (description.includes("NO RATING")) colorClass = "MODERATE";
+                    if (ratingText.includes("EXTREME")) colorClass = "EXTREME";
+                    if (ratingText.includes("MODERATE")) colorClass = "MODERATE";
+                    if (ratingText.includes("CATASTROPHIC")) colorClass = "CATASTROPHIC";
+                    if (ratingText.includes("NO RATING")) colorClass = "MODERATE";
 
-                    html += `<div class="map-box bg-${colorClass}"></div>`;
+                    html += `
+                        <div class="day-column">
+                            <div class="map-container">
+                                <img src="${imgSrc}" alt="Fire Map">
+                            </div>
+                            <div class="rating ${colorClass}">${ratingText}</div>
+                        </div>`;
                 }
                 document.getElementById('content').innerHTML = html;
             } catch (err) {
-                console.error("Feed error:", err);
+                document.getElementById('content').innerHTML = "Error loading CFA data.";
             }
         }
 
