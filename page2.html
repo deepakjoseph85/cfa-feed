@@ -2,30 +2,30 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>CFA South West Dashboard</title>
+    <title>South West Fire Danger</title>
     <style>
         body { background-color: black; color: white; font-family: 'Segoe UI', Arial, sans-serif; padding: 20px; text-align: center; overflow: hidden; }
-        .header { font-size: 2.5em; font-weight: bold; margin-bottom: 40px; text-transform: uppercase; }
-        .container { display: flex; justify-content: center; gap: 50px; align-items: flex-start; }
-        .day-column { flex: 1; max-width: 250px; display: flex; flex-direction: column; align-items: center; }
+        .header { font-size: 2.2em; font-weight: bold; margin-bottom: 30px; }
+        .container { display: flex; justify-content: center; gap: 40px; align-items: flex-start; }
+        .day-column { flex: 1; max-width: 220px; display: flex; flex-direction: column; align-items: center; }
         .label { font-size: 1.8em; margin-bottom: 15px; color: #ccc; font-weight: bold; }
         
         /* Map Silhouette Styles */
         .map-icon {
             width: 140px; height: 100px; margin-bottom: 15px;
             background-size: contain; background-repeat: no-repeat; background-position: center;
-            /* Using a South West District shape placeholder */
+            /* Placeholder SVG for South West District */
             background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 60"><path d="M20,45 L15,35 L20,20 L35,10 L55,10 L75,15 L85,30 L80,50 L55,55 L35,50 Z" fill="white"/></svg>');
         }
         
         .rating-text { font-size: 2em; font-weight: 900; text-transform: uppercase; margin-bottom: 15px; }
         
-        /* Ban Alert Section - Only shows when active */
-        .ban-alert { min-height: 120px; display: none; flex-direction: column; align-items: center; }
-        .ban-active { display: flex; }
-        .ban-icon { width: 30px; height: 30px; margin-bottom: 10px; }
-        .ban-text { font-size: 1.2em; font-weight: bold; line-height: 1.2; }
-        .restrictions { color: #2e5bff; text-decoration: underline; font-size: 0.9em; margin-top: 8px; font-weight: bold; }
+        /* TFB Notice - Only shows when active */
+        .tfb-area { min-height: 120px; display: flex; flex-direction: column; align-items: center; }
+        .tfb-notice { display: none; font-size: 1.1em; font-weight: bold; line-height: 1.2; }
+        .tfb-active { display: block; }
+        .tfb-icon { font-size: 1.5em; display: block; margin-bottom: 5px; color: #e03c31; }
+        .restrictions { color: #2e5bff; text-decoration: underline; font-size: 0.9em; margin-top: 5px; font-weight: bold; }
 
         /* CFA Colors */
         .MODERATE { color: #78be20; } .HIGH { color: #ffb81c; } .EXTREME { color: #e03c31; }
@@ -33,13 +33,13 @@
         .map-HIGH { filter: invert(79%) sepia(65%) saturate(558%) hue-rotate(352deg) brightness(101%) contrast(105%); }
         .map-EXTREME { filter: invert(34%) sepia(85%) saturate(2256%) hue-rotate(345deg) brightness(91%) contrast(97%); }
 
-        .footer { margin-top: 60px; font-size: 1em; color: #666; border-top: 1px solid #222; padding-top: 15px; }
+        .footer { margin-top: 50px; font-size: 0.9em; color: #666; border-top: 1px solid #222; padding-top: 10px; }
         .timestamp { font-weight: bold; color: #888; }
     </style>
 </head>
 <body>
     <div class="header">South West Fire Danger</div>
-    <div id="content" class="container">Connecting to CFA Feed...</div>
+    <div id="content" class="container">Updating from CFA...</div>
     <div id="footer" class="footer"></div>
 
     <script>
@@ -74,18 +74,19 @@
                     if (desc.includes("EXTREME")) rating = "EXTREME";
                     else if (desc.includes("HIGH")) rating = "HIGH";
 
-                    // The logic: Only show the ban if it DOES NOT say "NOT CURRENTLY"
-                    const isBanForce = (title.includes("TOTAL FIRE BAN") || desc.includes("TOTAL FIRE BAN")) && !desc.includes("NOT CURRENTLY");
+                    // LOGIC: Show TFB only if "TOTAL FIRE BAN" is found AND it doesn't say "NOT CURRENTLY"
+                    const isBanInForce = (title.includes("TOTAL FIRE BAN") || desc.includes("TOTAL FIRE BAN")) && !desc.includes("NOT CURRENTLY");
 
                     html += `
                         <div class="day-column">
                             <div class="label">${labels[i]}</div>
                             <div class="map-icon map-${rating}"></div>
                             <div class="rating-text ${rating}">${rating}</div>
-                            <div class="ban-alert ${isBanForce ? 'ban-active' : ''}">
-                                <img class="ban-icon" src="https://raw.githubusercontent.com/google/material-design-icons/master/src/alert/warning/materialicons/24px.svg" style="filter: invert(27%) sepia(91%) saturate(2352%) hue-rotate(346deg) brightness(91%) contrast(97%);">
-                                <div class="ban-text" style="color: ${rating === 'EXTREME' ? '#e03c31' : '#ffb81c'}">TOTAL FIRE BAN IN FORCE</div>
-                                <div class="restrictions">RESTRICTIONS APPLY</div>
+                            <div class="tfb-area">
+                                <div class="tfb-notice ${isBanInForce ? 'tfb-active' : ''}" style="color: ${rating === 'EXTREME' ? '#e03c31' : '#ffb81c'}">
+                                    <span class="tfb-icon">🚫</span> TOTAL FIRE BAN IN FORCE
+                                    <div class="restrictions">RESTRICTIONS APPLY</div>
+                                </div>
                             </div>
                         </div>`;
                 });
@@ -93,12 +94,12 @@
                 document.getElementById('content').innerHTML = html;
                 document.getElementById('footer').innerHTML = `Forecast issued: <span class="timestamp">${formatAEST(pubDate)}</span>`;
             } catch (err) {
-                document.getElementById('content').innerHTML = "Unable to reach CFA Feed.";
+                document.getElementById('content').innerHTML = "Unable to load CFA data.";
             }
         }
 
         updateDisplay();
-        setInterval(updateDisplay, 1800000); // Check every 30 mins
+        setInterval(updateDisplay, 1800000);
     </script>
 </body>
 </html>
