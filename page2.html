@@ -7,56 +7,38 @@
             background-color: black; 
             color: white; 
             font-family: 'Segoe UI', Arial, sans-serif; 
-            padding: 20px;
+            padding: 40px; 
         }
         .header { 
-            font-size: 1.5em; 
+            font-size: 1.8em; 
             font-weight: bold; 
-            margin-bottom: 25px; 
+            margin-bottom: 40px; 
+            text-align: left;
         }
-        .container { 
-            display: flex; 
-            gap: 40px; 
-            align-items: flex-start;
-        }
-        .day-column { 
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-            min-width: 100px;
-        }
-        .label { 
-            font-size: 1.1em; 
-            margin-bottom: 12px; 
-            color: #eee;
-        }
-        .district-svg {
-            width: 85px;
-            height: auto;
-            margin-bottom: 10px;
-            filter: drop-shadow(0 0 2px rgba(255,255,255,0.1));
-        }
-        .rating-label { 
-            font-size: 1.2em; 
-            font-weight: 900; 
-            text-transform: uppercase;
-        }
+        .container { display: flex; justify-content: flex-start; gap: 60px; }
+        .day-column { display: flex; flex-direction: column; align-items: flex-start; }
+        .label { font-size: 1.2em; margin-bottom: 15px; color: #aaa; text-transform: uppercase; }
         
-        /* AFDRS Standardized Colors */
-        .MODERATE { fill: #78be20; color: #78be20; } 
-        .HIGH { fill: #ffb81c; color: #ffb81c; } 
-        .EXTREME { fill: #ff8200; color: #ff8200; } 
+        /* District Map Shape */
+        .map-svg { width: 110px; height: auto; margin-bottom: 15px; }
+        
+        .rating { font-size: 1.6em; font-weight: 900; letter-spacing: 0.5px; }
+
+        /* AFDRS Standard Colors */
+        .MODERATE { fill: #78be20; color: #78be20; }
+        .HIGH { fill: #ffb81c; color: #ffb81c; }
+        .EXTREME { fill: #ff8200; color: #ff8200; }
         .CATASTROPHIC { fill: #e03c31; color: #e03c31; }
-        .NO_RATING { fill: #7c7c7c; color: #ffffff; } /* Grey for no forecast */
+        .NORATING { fill: #444; color: #888; }
     </style>
 </head>
 <body>
     <div class="header">Fire Danger Ratings</div>
-    <div id="content" class="container">Loading live CFA data...</div>
+    <div id="content" class="container">Loading...</div>
 
     <script>
-        // Accurate path representing the South West Victoria Fire District
-        const southwestShape = "M85,35 L98,40 L95,65 L88,75 L82,85 L70,95 L55,98 L35,95 L15,85 L5,75 L2,55 L10,35 L25,20 L45,10 L65,8 L85,15 Z";
+        // Geographic path for South West district
+        const southwestPath = "M10,30 C15,10 40,5 60,5 S95,20 95,45 L85,85 C65,95 30,98 10,80 Z";
 
         async function fetchFeed() {
             const rssUrl = "https://www.cfa.vic.gov.au/cfa/rssfeed/southwest-firedistrict_rss.xml";
@@ -70,31 +52,34 @@
                 const items = xml.querySelectorAll("item");
                 
                 let html = '';
-                const dayLabels = ["Today", "Tomorrow", "Overmorrow"];
+                const labels = ["Today", "Tomorrow", "Overmorrow"];
                 
                 for (let i = 0; i < 3; i++) {
-                    const desc = items[i].querySelector("description").textContent.toUpperCase();
+                    const rawDesc = items[i].querySelector("description").textContent.toUpperCase();
                     
-                    let rating = "HIGH";
-                    if (desc.includes("EXTREME")) rating = "EXTREME";
-                    else if (desc.includes("MODERATE")) rating = "MODERATE";
-                    else if (desc.includes("CATASTROPHIC")) rating = "CATASTROPHIC";
-                    else if (desc.includes("NO RATING")) rating = "NO_RATING";
+                    // Logic to extract ONLY the rating word
+                    let cleanRating = "HIGH"; // Default
+                    if (rawDesc.includes("CATASTROPHIC")) cleanRating = "CATASTROPHIC";
+                    else if (rawDesc.includes("EXTREME")) cleanRating = "EXTREME";
+                    else if (rawDesc.includes("MODERATE")) cleanRating = "MODERATE";
+                    else if (rawDesc.includes("NO RATING")) cleanRating = "NORATING";
 
-                    const displayRating = rating === "NO_RATING" ? "NO RATING" : rating;
+                    // Map the CSS class to the rating
+                    const colorClass = cleanRating;
+                    const displayRating = cleanRating === "NORATING" ? "NO RATING" : cleanRating;
 
                     html += `
                         <div class="day-column">
-                            <div class="label">${dayLabels[i]}</div>
-                            <svg class="district-svg" viewBox="0 0 100 100">
-                                <path class="${rating}" d="${southwestShape}" stroke="white" stroke-width="1.5" />
+                            <div class="label">${labels[i]}</div>
+                            <svg class="map-svg" viewBox="0 0 100 100">
+                                <path class="${colorClass}" d="${southwestPath}" stroke="white" stroke-width="1" />
                             </svg>
-                            <div class="rating-label ${rating}">${displayRating}</div>
+                            <div class="rating ${colorClass}">${displayRating}</div>
                         </div>`;
                 }
                 document.getElementById('content').innerHTML = html;
             } catch (err) {
-                document.getElementById('content').innerHTML = "Ratings currently unavailable.";
+                document.getElementById('content').innerHTML = "Unavailable";
             }
         }
 
