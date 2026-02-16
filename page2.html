@@ -4,27 +4,44 @@
     <meta charset="UTF-8">
     <style>
         body { background: black; color: white; font-family: 'Segoe UI', Arial, sans-serif; text-align: center; padding: 20px; }
-        .container { display: flex; justify-content: center; gap: 40px; margin-top: 30px; }
-        .day { flex: 1; max-width: 250px; }
-        .label { font-size: 2em; font-weight: bold; margin-bottom: 10px; }
-        .rating { font-size: 1.8em; font-weight: 900; margin-bottom: 15px; }
-        /* 3D Map Effect */
-        .map-svg { width: 220px; height: auto; filter: drop-shadow(4px 6px 0px #333); transition: fill 0.5s; }
-        /* CFA Rating Colors */
+        .container { display: flex; justify-content: center; gap: 40px; margin-top: 20px; }
+        .day { flex: 1; max-width: 280px; display: flex; flex-direction: column; align-items: center; }
+        .label { font-size: 2.2em; font-weight: bold; margin-top: 15px; letter-spacing: 1px; }
+        .rating { font-size: 2.4em; font-weight: 900; margin-bottom: 20px; }
+        
+        /* Detailed 3D District Shape */
+        .map-svg { 
+            width: 240px; height: auto; 
+            filter: drop-shadow(6px 8px 0px #222); /* The 3D shadow effect */
+            stroke: #444; stroke-width: 1;
+        }
+
+        /* Official Colors */
         .HIGH { color: #ffb81c; fill: #ffb81c; }
         .EXTREME { color: #e03c31; fill: #e03c31; }
         .MODERATE { color: #78be20; fill: #78be20; }
-        .CATASTROPHIC { color: #fb4f4f; fill: #000; stroke: red; stroke-width: 2; }
+        .CATASTROPHIC { color: #fb4f4f; fill: #000; stroke: red; stroke-width: 3; }
+
+        /* TFB Warning Badge */
+        .tfb-badge {
+            background: #d1190d; border: 2px solid white; border-radius: 8px;
+            padding: 10px; margin-top: 20px; width: 180px;
+        }
     </style>
 </head>
 <body>
-    <h1>South West Fire Danger</h1>
-    <div id="content" class="container">Loading live data...</div>
+    <h1 style="font-size: 3em; margin-bottom: 0;">South West Fire Danger</h1>
+    <div id="last-sync" style="color: #666; font-size: 0.8em; margin-bottom: 30px;">SYNCING...</div>
+    
+    <div id="content" class="container"></div>
 
     <script>
+        // High-detail SVG path for South West District
+        const districtPath = "M45,42 L70,35 L120,38 L180,30 L220,35 L245,60 L240,110 L250,140 L240,170 L210,195 L160,205 L110,210 L60,195 L35,165 L42,120 L30,85 Z";
+
         const drawMap = (cls) => `
-            <svg class="map-svg ${cls}" viewBox="0 0 300 220" xmlns="http://www.w3.org/2000/svg">
-                <path d="M40,50 L240,40 L270,100 L250,180 L200,210 L80,205 L40,140 L30,80 Z" stroke="white" stroke-width="2" />
+            <svg class="map-svg ${cls}" viewBox="0 0 300 250" xmlns="http://www.w3.org/2000/svg">
+                <path d="${districtPath}" />
             </svg>`;
 
         async function fetchFeed() {
@@ -38,19 +55,23 @@
                 let html = '';
                 ["TODAY", "TOMORROW", "OVERMORROW"].forEach((label, i) => {
                     const desc = items[i].querySelector("description").textContent.toUpperCase();
+                    // Cleanly match the rating word and ignore numbers/dates
                     const match = desc.match(/(CATASTROPHIC|EXTREME|HIGH|MODERATE|NO RATING)/);
                     const rating = match ? match[0] : "MODERATE";
+                    const isTFB = desc.includes("TOTAL FIRE BAN");
                     const cls = rating.replace(" ", "-");
 
                     html += `
                         <div class="day">
                             <div class="rating ${cls}">${rating}</div>
                             ${drawMap(cls)}
-                            <div class="label" style="margin-top:15px">${label}</div>
+                            <div class="label">${label}</div>
+                            ${isTFB ? `<div class="tfb-badge"><b style="font-size:1.2em">TOTAL FIRE BAN</b><br>IN FORCE</div>` : ''}
                         </div>`;
                 });
                 document.getElementById('content').innerHTML = html;
-            } catch (e) { document.getElementById('content').innerHTML = "Feed Error"; }
+                document.getElementById('last-sync').innerText = "LAST SYNC: " + new Date().toLocaleTimeString();
+            } catch (e) { document.getElementById('content').innerHTML = "Live Feed Unavailable"; }
         }
         fetchFeed();
         setInterval(fetchFeed, 1800000);
