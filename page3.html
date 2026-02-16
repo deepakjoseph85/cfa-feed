@@ -8,25 +8,25 @@
             color: white; 
             font-family: 'Segoe UI', Arial, sans-serif; 
             margin: 0; 
-            padding: 40px; 
+            padding: 20px; /* Reduced from 40px */
         }
 
-        /* Top Left Header */
+        /* Condensed Top Left Header */
         .header {
-            font-size: 2.2em;
+            font-size: 1.8em; /* Reduced from 2.2em */
             font-weight: 800;
             text-transform: uppercase;
-            margin-bottom: 40px;
-            border-left: 5px solid #e03c31;
-            padding-left: 15px;
+            margin-bottom: 25px; /* Reduced from 40px */
+            border-left: 4px solid #e03c31;
+            padding-left: 12px;
             text-align: left;
         }
 
-        /* Aligned to the left */
+        /* Narrower Container */
         .container { 
             display: flex; 
             justify-content: flex-start; 
-            gap: 60px; 
+            gap: 30px; /* Reduced gap from 60px */
             text-align: center; 
             flex-wrap: wrap;
         }
@@ -35,55 +35,55 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            width: 220px; /* Maintains consistent width for alignment */
+            width: 180px; /* Reduced from 220px */
         }
 
         .day-label { 
-            font-size: 1.6em; 
+            font-size: 1.2em; /* Reduced from 1.6em */
             color: #888; 
-            margin-bottom: 20px; 
+            margin-bottom: 10px; 
             font-weight: bold;
             text-transform: uppercase;
         }
 
         .map-container img { 
-            width: 220px; 
+            width: 100%; /* Scales to the 180px column width */
             height: auto; 
             border-radius: 4px;
-            margin-bottom: 20px;
-        }
-
-        .rating { 
-            font-size: 2em; 
-            font-weight: 900; 
-            text-transform: uppercase; 
-            letter-spacing: 1px;
             margin-bottom: 10px;
         }
 
-        /* Flashing Total Fire Ban Badge */
+        .rating { 
+            font-size: 1.5em; /* Reduced from 2em */
+            font-weight: 900; 
+            text-transform: uppercase; 
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+
+        /* Compact Total Fire Ban Badge */
         .tfb-badge {
             background-color: #e03c31;
             color: white;
             font-weight: bold;
-            padding: 8px 15px;
+            padding: 4px 10px; /* Reduced padding */
             display: inline-block;
-            border-radius: 4px;
-            font-size: 1em;
-            letter-spacing: 1px;
+            border-radius: 3px;
+            font-size: 0.8em; /* Reduced font size */
+            letter-spacing: 0.5px;
             animation: pulse-red 1.5s infinite ease-in-out;
         }
 
         @keyframes pulse-red {
             0% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.6; transform: scale(1.03); }
+            50% { opacity: 0.7; transform: scale(1.02); }
             100% { opacity: 1; transform: scale(1); }
         }
         
         .footer {
-            margin-top: 60px;
+            margin-top: 30px; /* Reduced from 60px */
             color: #444;
-            font-size: 0.8em;
+            font-size: 0.7em; /* Reduced from 0.8em */
             text-transform: uppercase;
             text-align: left;
         }
@@ -92,13 +92,13 @@
         .MODERATE { color: #78be20; } 
         .HIGH { color: #ffb81c; } 
         .EXTREME { color: #e03c31; } 
-        .CATASTROPHIC { color: white; background: red; padding: 0 10px; }
+        .CATASTROPHIC { color: white; background: red; padding: 0 5px; }
     </style>
 </head>
 <body>
     <div class="header">South West Fire Danger Rating</div>
     
-    <div id="content" class="container">Loading live data...</div>
+    <div id="content" class="container">Loading...</div>
 
     <div id="footer" class="footer"></div>
 
