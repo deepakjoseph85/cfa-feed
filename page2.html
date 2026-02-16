@@ -17,27 +17,27 @@
         }
         .container { display: flex; justify-content: flex-start; gap: 60px; }
         .day-column { display: flex; flex-direction: column; align-items: flex-start; }
-        .label { font-size: 1.2em; margin-bottom: 15px; color: #aaa; text-transform: uppercase; }
+        .label { font-size: 1.1em; margin-bottom: 15px; color: #888; text-transform: uppercase; letter-spacing: 1px; }
         
         /* District Map Shape */
-        .map-svg { width: 110px; height: auto; margin-bottom: 15px; }
+        .map-svg { width: 100px; height: auto; margin-bottom: 12px; }
         
-        .rating { font-size: 1.6em; font-weight: 900; letter-spacing: 0.5px; }
+        .rating { font-size: 1.5em; font-weight: 900; letter-spacing: 0.5px; text-transform: uppercase; }
 
         /* AFDRS Standard Colors */
         .MODERATE { fill: #78be20; color: #78be20; }
         .HIGH { fill: #ffb81c; color: #ffb81c; }
         .EXTREME { fill: #ff8200; color: #ff8200; }
         .CATASTROPHIC { fill: #e03c31; color: #e03c31; }
-        .NORATING { fill: #444; color: #888; }
+        .NORATING { fill: #333; color: #666; }
     </style>
 </head>
 <body>
     <div class="header">Fire Danger Ratings</div>
-    <div id="content" class="container">Loading...</div>
+    <div id="content" class="container">Connecting...</div>
 
     <script>
-        // Geographic path for South West district
+        // South West District Boundary Path
         const southwestPath = "M10,30 C15,10 40,5 60,5 S95,20 95,45 L85,85 C65,95 30,98 10,80 Z";
 
         async function fetchFeed() {
@@ -52,34 +52,32 @@
                 const items = xml.querySelectorAll("item");
                 
                 let html = '';
-                const labels = ["Today", "Tomorrow", "Overmorrow"];
+                const dayLabels = ["Today", "Tomorrow", "Overmorrow"];
                 
                 for (let i = 0; i < 3; i++) {
                     const rawDesc = items[i].querySelector("description").textContent.toUpperCase();
                     
-                    // Logic to extract ONLY the rating word
-                    let cleanRating = "HIGH"; // Default
-                    if (rawDesc.includes("CATASTROPHIC")) cleanRating = "CATASTROPHIC";
-                    else if (rawDesc.includes("EXTREME")) cleanRating = "EXTREME";
-                    else if (rawDesc.includes("MODERATE")) cleanRating = "MODERATE";
-                    else if (rawDesc.includes("NO RATING")) cleanRating = "NORATING";
+                    // Isolate just the rating keyword from the messy text
+                    let rating = "NORATING";
+                    if (rawDesc.includes("CATASTROPHIC")) rating = "CATASTROPHIC";
+                    else if (rawDesc.includes("EXTREME")) rating = "EXTREME";
+                    else if (rawDesc.includes("HIGH")) rating = "HIGH";
+                    else if (rawDesc.includes("MODERATE")) rating = "MODERATE";
 
-                    // Map the CSS class to the rating
-                    const colorClass = cleanRating;
-                    const displayRating = cleanRating === "NORATING" ? "NO RATING" : cleanRating;
+                    const displayText = (rating === "NORATING") ? "NO RATING" : rating;
 
                     html += `
                         <div class="day-column">
-                            <div class="label">${labels[i]}</div>
+                            <div class="label">${dayLabels[i]}</div>
                             <svg class="map-svg" viewBox="0 0 100 100">
-                                <path class="${colorClass}" d="${southwestPath}" stroke="white" stroke-width="1" />
+                                <path class="${rating}" d="${southwestPath}" stroke="rgba(255,255,255,0.3)" stroke-width="1.5" />
                             </svg>
-                            <div class="rating ${colorClass}">${displayRating}</div>
+                            <div class="rating ${rating}">${displayText}</div>
                         </div>`;
                 }
                 document.getElementById('content').innerHTML = html;
             } catch (err) {
-                document.getElementById('content').innerHTML = "Unavailable";
+                document.getElementById('content').innerHTML = "Feed Error";
             }
         }
 
