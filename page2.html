@@ -3,62 +3,84 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>South West Fire Danger</title>
+    <title>South West Fire Danger Dashboard</title>
     <style>
-        body { background-color: black; color: white; font-family: 'Segoe UI', Arial, sans-serif; padding: 40px; text-align: center; }
-        .header { font-size: 2.8em; font-weight: bold; margin-bottom: 5px; }
-        .update-time { font-size: 0.8em; color: #666; margin-bottom: 40px; text-transform: uppercase; letter-spacing: 2px; }
-        
-        .container { display: flex; justify-content: center; gap: 50px; flex-wrap: wrap; }
-        .day-column { flex: 1; max-width: 280px; display: flex; flex-direction: column; align-items: center; }
-        
-        .label { font-size: 2.2em; margin-bottom: 15px; font-weight: bold; text-transform: uppercase; }
-
-        /* The Map: Built with SVG so it never breaks */
-        .map-svg {
-            width: 220px;
-            height: auto;
-            margin-bottom: 15px;
-            filter: drop-shadow(4px 4px 0px #333); /* Gives it that 3D depth look */
+        body { 
+            background-color: black; 
+            color: white; 
+            font-family: 'Segoe UI', Arial, sans-serif; 
+            padding: 40px; 
+            text-align: center; 
         }
-
-        .rating { font-size: 2em; font-weight: 900; letter-spacing: 1px; text-transform: uppercase; margin-top: 10px; }
-
-        /* TFB Badge: Built with CSS/SVG */
-        .tfb-badge {
-            margin-top: 20px;
-            padding: 12px;
-            background-color: #d1190d; 
-            border: 2px solid white;
-            border-radius: 8px;
+        .header { 
+            font-size: 2.5em; 
+            font-weight: bold; 
+            margin-bottom: 50px; 
+            border-bottom: 2px solid #333; 
+            padding-bottom: 10px; 
+        }
+        .container { 
+            display: flex; 
+            justify-content: center; 
+            gap: 60px; 
+            flex-wrap: wrap;
+        }
+        .day-column { 
+            flex: 1; 
+            max-width: 280px; 
             display: flex;
             flex-direction: column;
             align-items: center;
-            width: 160px;
         }
-        .tfb-text { font-weight: 900; font-size: 0.85em; color: white; margin-top: 5px; line-height: 1.1; }
+        .label { 
+            font-size: 1.8em; 
+            margin-bottom: 20px; 
+            color: #ccc; 
+            font-weight: bold;
+        }
+        
+        /* Map Styling */
+        .district-map {
+            width: 200px;
+            height: auto;
+            margin-bottom: 20px;
+            filter: drop-shadow(0 0 10px rgba(255,255,255,0.1));
+            transition: fill 0.5s ease;
+        }
 
-        /* CFA Colors */
-        .MODERATE { color: #78be20; fill: #78be20; } 
-        .HIGH { color: #ffb81c; fill: #ffb81c; } 
-        .EXTREME { color: #e03c31; fill: #e03c31; } 
-        .CATASTROPHIC { color: #fb4f4f; fill: #000; stroke: red; }
+        .rating { 
+            font-size: 2em; 
+            font-weight: 900; 
+            letter-spacing: 1px; 
+            text-transform: uppercase; 
+        }
+        
+        /* CFA Rating Colors */
+        .MODERATE { fill: #78be20; color: #78be20; } 
+        .HIGH { fill: #ffb81c; color: #ffb81c; } 
+        .EXTREME { fill: #e03c31; color: #e03c31; } 
+        .CATASTROPHIC { fill: #000; color: #fb4f4f; stroke: #fb4f4f; stroke-width: 2px; }
+        .NO-RATING { fill: #333; color: #666; }
     </style>
 </head>
 <body>
 
     <div class="header">South West Fire Danger</div>
-    <div id="last-update" class="update-time">SYNCING LIVE DATA...</div>
-    
-    <div id="content" class="container"></div>
+    <div id="content" class="container">Loading live CFA data...</div>
 
     <script>
-        // Custom SVG function to draw the South West district silhouette
-        const drawMap = (colorClass) => `
-            <svg class="map-svg ${colorClass}" viewBox="0 0 300 200" xmlns="http://www.w3.org/2000/svg">
-                <path d="M50,40 L220,30 L250,80 L230,150 L180,180 L80,175 L40,120 L30,70 Z" stroke="white" stroke-width="2" />
-                <text x="150" y="110" fill="black" font-size="20" font-weight="bold" text-anchor="middle" font-family="Arial">SOUTH WEST</text>
+        // This function returns an SVG path representing the South West District silhouette
+        function getMapSVG(colorClass) {
+            return `
+            <svg class="district-map ${colorClass}" viewBox="0 0 250 180" xmlns="http://www.w3.org/2000/svg">
+                <path d="M20,60 L60,20 L180,30 L230,80 L210,140 L150,160 L60,155 L20,110 Z" 
+                      stroke="white" stroke-width="2" />
+                <text x="50%" y="55%" dominant-baseline="middle" text-anchor="middle" 
+                      fill="black" font-size="16" font-weight="bold" font-family="Arial">
+                    SOUTH WEST
+                </text>
             </svg>`;
+        }
 
         async function fetchFeed() {
             const rssUrl = "https://www.cfa.vic.gov.au/cfa/rssfeed/southwest-firedistrict_rss.xml";
@@ -66,26 +88,44 @@
             
             try {
                 const response = await fetch(proxy);
+                if (!response.ok) throw new Error('Network response error');
                 const text = await response.text();
                 const parser = new DOMParser();
                 const xml = parser.parseFromString(text, "text/xml");
                 const items = xml.querySelectorAll("item");
                 
                 let html = '';
-                const labels = ["TODAY", "TOMORROW", "OVERMORROW"];
+                const labels = ["Today", "Tomorrow", "Overmorrow"];
                 
                 for (let i = 0; i < 3; i++) {
-                    const descRaw = items[i].querySelector("description").textContent.toUpperCase();
+                    const ratingRaw = items[i].querySelector("description").textContent.trim().toUpperCase();
                     
-                    // Regex to extract ONLY the rating and ignore messy dates
-                    const ratingMatch = descRaw.match(/(CATASTROPHIC|EXTREME|HIGH|MODERATE|NO RATING)/);
-                    const ratingText = ratingMatch ? ratingMatch[0] : "MODERATE";
-                    
-                    const isTFB = descRaw.includes("TOTAL FIRE BAN");
-                    const colorClass = ratingText.replace(" ", "-");
+                    // Simple logic to determine color class
+                    let colorClass = "HIGH";
+                    if (ratingRaw.includes("EXTREME")) colorClass = "EXTREME";
+                    else if (ratingRaw.includes("MODERATE")) colorClass = "MODERATE";
+                    else if (ratingRaw.includes("CATASTROPHIC")) colorClass = "CATASTROPHIC";
+                    else if (ratingRaw.includes("NO RATING")) colorClass = "NO-RATING";
+
+                    // Clean up the text for display (remove "SOUTH WEST:" prefix if present)
+                    const cleanRating = ratingRaw.replace("SOUTH WEST:", "").trim();
 
                     html += `
                         <div class="day-column">
                             <div class="label">${labels[i]}</div>
-                            
-                            ${drawMap(colorClass)}
+                            ${getMapSVG(colorClass)}
+                            <div class="rating ${colorClass}">${cleanRating}</div>
+                        </div>`;
+                }
+                document.getElementById('content').innerHTML = html;
+            } catch (err) {
+                console.error(err);
+                document.getElementById('content').innerHTML = "Unable to reach CFA data.";
+            }
+        }
+
+        fetchFeed();
+        setInterval(fetchFeed, 1800000); // Auto-refresh every 30 mins
+    </script>
+</body>
+</html>
