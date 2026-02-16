@@ -51,15 +51,25 @@
             margin-bottom: 10px;
         }
 
-        /* Total Fire Ban Badge */
+        /* Flashing Total Fire Ban Badge */
         .tfb-badge {
             background-color: #e03c31;
             color: white;
             font-weight: bold;
-            padding: 5px 10px;
+            padding: 8px 15px;
             display: inline-block;
             border-radius: 4px;
-            font-size: 0.9em;
+            font-size: 1em;
+            letter-spacing: 1px;
+            /* Animation triggers */
+            animation: pulse-red 1.5s infinite ease-in-out;
+        }
+
+        /* Pulse Animation Logic */
+        @keyframes pulse-red {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.05); }
+            100% { opacity: 1; transform: scale(1); }
         }
         
         .footer {
@@ -79,7 +89,7 @@
 <body>
     <div class="header">South West Fire Danger Rating</div>
     
-    <div id="content" class="container">Loading...</div>
+    <div id="content" class="container">Loading live data...</div>
 
     <div id="footer" class="footer"></div>
 
@@ -110,21 +120,20 @@
                 let html = '';
 
                 for (let i = 0; i < 3; i++) {
+                    if (!items[i]) break;
                     const descContent = items[i].querySelector("description").textContent;
                     const descUpper = descContent.toUpperCase();
                     
-                    // 1. Image Selection
                     const imgMatch = descContent.match(/src="([^"]+)"/);
                     const imgSrc = imgMatch ? imgMatch[1] : "";
                     
-                    // 2. Rating Selection
-                    let displayRating = "MODERATE";
+                    let displayRating = "HIGH";
                     if (descUpper.includes("CATASTROPHIC")) displayRating = "CATASTROPHIC";
                     else if (descUpper.includes("EXTREME")) displayRating = "EXTREME";
-                    else if (descUpper.includes("HIGH")) displayRating = "HIGH";
+                    else if (descUpper.includes("MODERATE")) displayRating = "MODERATE";
+                    else if (descUpper.includes("NO RATING")) displayRating = "MODERATE";
 
-                    // 3. TFB Selection Logic
-                    // We check if "TOTAL FIRE BAN" exists AND it doesn't say "IS NOT"
+                    // TFB Logic: Check for Ban status
                     const isBan = descUpper.includes("TOTAL FIRE BAN") && !descUpper.includes("NOT CURRENTLY");
 
                     html += `
@@ -144,7 +153,7 @@
         }
 
         fetchFeed();
-        setInterval(fetchFeed, 1800000);
+        setInterval(fetchFeed, 1800000); // 30 min refresh
     </script>
 </body>
 </html>
