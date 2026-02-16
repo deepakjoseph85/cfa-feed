@@ -3,17 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <style>
-        body { background-color: black; color: white; font-family: 'Segoe UI', Arial, sans-serif; padding: 40px; text-align: center; }
-        .header { font-size: 2.5em; font-weight: bold; margin-bottom: 50px; border-bottom: 2px solid #333; padding-bottom: 10px; }
-        .container { display: flex; justify-content: center; gap: 60px; }
-        .day-column { flex: 1; max-width: 250px; }
-        .label { font-size: 1.8em; margin-bottom: 20px; color: #ccc; }
+        /* Minimalist dark background */
+        body { background-color: black; color: white; font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 20px; }
+        .container { display: flex; justify-content: center; gap: 40px; }
+        .day-column { text-align: center; }
+        
+        /* The Map Box */
         .map-box { 
-            width: 150px; height: 100px; margin: 0 auto 20px auto; 
-            border-radius: 10px; display: flex; align-items: center; justify-content: center;
-            font-size: 0.9em; font-weight: bold; color: black;
+            width: 140px; height: 90px; margin: 0 auto 10px auto; 
+            border-radius: 8px; display: flex; align-items: center; justify-content: center;
+            font-size: 0.8em; font-weight: bold; color: black;
         }
-        .rating { font-size: 2em; font-weight: 900; letter-spacing: 1px; text-transform: uppercase; }
+
+        /* Rating Text */
+        .rating { font-size: 1.5em; font-weight: 900; text-transform: uppercase; }
         
         /* CFA Official Colors */
         .MODERATE { color: #78be20; } 
@@ -28,29 +31,22 @@
     </style>
 </head>
 <body>
-    <div class="header">South West Fire Danger</div>
-    <div id="content" class="container">Loading live CFA data...</div>
+    <div id="content" class="container">Loading...</div>
 
     <script>
         async function fetchFeed() {
-            // Direct URL without proxy
             const rssUrl = "https://www.cfa.vic.gov.au/cfa/rssfeed/southwest-firedistrict_rss.xml";
+            const proxy = "https://corsproxy.io/?" + encodeURIComponent(rssUrl);
             
             try {
-                const response = await fetch(rssUrl);
-                if (!response.ok) throw new Error('CORS or Network error');
-                
+                const response = await fetch(proxy);
                 const text = await response.text();
                 const parser = new DOMParser();
                 const xml = parser.parseFromString(text, "text/xml");
                 const items = xml.querySelectorAll("item");
                 
                 let html = '';
-                const labels = ["Today", "Tomorrow", "Overmorrow"];
-                
                 for (let i = 0; i < 3; i++) {
-                    if(!items[i]) break; // Safety check if fewer than 3 days exist
-                    
                     const ratingText = items[i].querySelector("description").textContent.trim().toUpperCase();
                     
                     let colorClass = "HIGH";
@@ -61,18 +57,13 @@
 
                     html += `
                         <div class="day-column">
-                            <div class="label">${labels[i]}</div>
-                            <div class="map-box bg-${colorClass}">
-                                SOUTH WEST
-                            </div>
+                            <div class="map-box bg-${colorClass}">SOUTH WEST</div>
                             <div class="rating ${colorClass}">${ratingText}</div>
                         </div>`;
                 }
                 document.getElementById('content').innerHTML = html;
             } catch (err) {
-                console.error("Fetch error:", err);
-                document.getElementById('content').innerHTML = 
-                    `<div style="color: #666;">Unable to load data.<br><small>This may be due to browser CORS restrictions.</small></div>`;
+                document.getElementById('content').innerHTML = "Feed Unavailable";
             }
         }
 
