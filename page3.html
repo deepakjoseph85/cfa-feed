@@ -10,35 +10,24 @@
             margin: 0; 
             padding: 40px; 
         }
-        
-        /* Header Aligned Top Left */
-        .main-header {
+
+        /* Top Left Header */
+        .header {
             font-size: 2.2em;
             font-weight: 800;
-            margin-bottom: 50px;
-            letter-spacing: -1px;
-            color: white;
             text-transform: uppercase;
-            text-align: left; /* Forces alignment to the left */
-            border-left: 5px solid #e03c31; /* Added a small red accent */
+            margin-bottom: 40px;
+            border-left: 5px solid #e03c31;
             padding-left: 15px;
         }
 
         .container { 
             display: flex; 
-            justify-content: center; /* Keeps the cards centered in the remaining space */
+            justify-content: center; 
             gap: 60px; 
-            flex-wrap: wrap;
-            min-height: 400px;
+            text-align: center; 
         }
         
-        .day-column {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            text-align: center;
-        }
-
         .day-label { 
             font-size: 1.6em; 
             color: #888; 
@@ -59,14 +48,25 @@
             font-weight: 900; 
             text-transform: uppercase; 
             letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+
+        /* Total Fire Ban Badge */
+        .tfb-badge {
+            background-color: #e03c31;
+            color: white;
+            font-weight: bold;
+            padding: 5px 10px;
+            display: inline-block;
+            border-radius: 4px;
+            font-size: 0.9em;
         }
         
         .footer {
             margin-top: 60px;
-            font-size: 0.8em;
             color: #444;
+            font-size: 0.8em;
             text-transform: uppercase;
-            text-align: left; /* Footer stays left with the header */
         }
 
         /* CFA Official Color Palette */
@@ -77,11 +77,10 @@
     </style>
 </head>
 <body>
-
-    <div class="main-header">South West Fire Danger Rating</div>
-
-    <div id="content" class="container">Loading live data...</div>
+    <div class="header">South West Fire Danger Rating</div>
     
+    <div id="content" class="container">Loading...</div>
+
     <div id="footer" class="footer"></div>
 
     <script>
@@ -96,45 +95,51 @@
                 const parser = new DOMParser();
                 const xml = parser.parseFromString(text, "text/xml");
                 
-                // Extract Footer Timestamp
-                const pubDateNode = xml.querySelector("pubDate");
-                if (pubDateNode) {
-                    const localTime = new Date(pubDateNode.textContent).toLocaleString("en-AU", { 
-                        timeZone: "Australia/Melbourne",
+                // Update Footer Time
+                const pubDate = xml.querySelector("pubDate")?.textContent;
+                if (pubDate) {
+                    const localTime = new Date(pubDate).toLocaleString("en-AU", { 
+                        timeZone: "Australia/Melbourne", 
                         dateStyle: "medium", 
                         timeStyle: "short" 
                     });
-                    document.getElementById('footer').innerHTML = `Last Update: ${localTime} AEST`;
+                    document.getElementById('footer').innerHTML = `Last Updated: ${localTime} AEST`;
                 }
 
                 const items = xml.querySelectorAll("item");
                 let html = '';
-                
-                for (let i = 0; i < 3; i++) {
-                    if (!items[i]) break;
-                    const desc = items[i].querySelector("description").textContent.toUpperCase();
-                    
-                    let rating = "MODERATE";
-                    let imgName = "moderate.gif";
 
-                    if (desc.includes("CATASTROPHIC")) { rating = "CATASTROPHIC"; imgName = "catastrophic.gif"; }
-                    else if (desc.includes("EXTREME")) { rating = "EXTREME"; imgName = "extreme.gif"; }
-                    else if (desc.includes("HIGH")) { rating = "HIGH"; imgName = "high.gif"; }
+                for (let i = 0; i < 3; i++) {
+                    const descContent = items[i].querySelector("description").textContent;
+                    const descUpper = descContent.toUpperCase();
                     
-                    const imgSrc = `https://www.cfa.vic.gov.au/cfa/images/fdr/southwest/${imgName}`;
+                    // 1. Image Selection
+                    const imgMatch = descContent.match(/src="([^"]+)"/);
+                    const imgSrc = imgMatch ? imgMatch[1] : "";
+                    
+                    // 2. Rating Selection
+                    let displayRating = "MODERATE";
+                    if (descUpper.includes("CATASTROPHIC")) displayRating = "CATASTROPHIC";
+                    else if (descUpper.includes("EXTREME")) displayRating = "EXTREME";
+                    else if (descUpper.includes("HIGH")) displayRating = "HIGH";
+
+                    // 3. TFB Selection Logic
+                    // We check if "TOTAL FIRE BAN" exists AND it doesn't say "IS NOT"
+                    const isBan = descUpper.includes("TOTAL FIRE BAN") && !descUpper.includes("NOT CURRENTLY");
 
                     html += `
                         <div class="day-column">
                             <div class="day-label">${labels[i]}</div>
                             <div class="map-container">
-                                <img src="${imgSrc}" alt="${rating}">
+                                <img src="${imgSrc}" alt="Map">
                             </div>
-                            <div class="rating ${rating}">${rating}</div>
+                            <div class="rating ${displayRating}">${displayRating}</div>
+                            ${isBan ? '<div class="tfb-badge">TOTAL FIRE BAN</div>' : ''}
                         </div>`;
                 }
                 document.getElementById('content').innerHTML = html;
             } catch (err) {
-                document.getElementById('content').innerHTML = "Feed Offline - Check Connection";
+                document.getElementById('content').innerHTML = "Feed Offline";
             }
         }
 
