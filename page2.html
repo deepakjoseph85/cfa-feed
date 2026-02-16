@@ -1,53 +1,187 @@
-async function fetchFeed() {
-    const rssUrl = "https://www.cfa.vic.gov.au/cfa/rssfeed/southwest-firedistrict_rss.xml";
-    const proxy = "https://corsproxy.io/?" + encodeURIComponent(rssUrl);
-    
-    try {
-        const response = await fetch(proxy);
-        if (!response.ok) throw new Error('Network response was not ok');
-        const text = await response.text();
-        const parser = new DOMParser();
-        const xml = parser.parseFromString(text, "text/xml");
-        const items = xml.querySelectorAll("item");
-        
-        let html = '';
-        const labels = ["Today", "Tomorrow", "Overmorrow"];
-        
-        for (let i = 0; i < 3; i++) {
-            const description = items[i].querySelector("description").textContent;
-            const ratingText = description.trim().toUpperCase();
-            
-            // Check if Total Fire Ban is mentioned
-            const isTFB = ratingText.includes("TOTAL FIRE BAN") || ratingText.includes("TFB");
-
-            let colorClass = "HIGH";
-            if (ratingText.includes("EXTREME")) colorClass = "EXTREME";
-            if (ratingText.includes("MODERATE")) colorClass = "MODERATE";
-            if (ratingText.includes("CATASTROPHIC")) colorClass = "CATASTROPHIC";
-            if (ratingText.includes("NO RATING")) colorClass = "MODERATE";
-
-            html += `
-                <div class="day-column">
-                    <div class="label">${labels[i]}</div>
-                    <div class="map-box bg-${colorClass}">
-                        SOUTH WEST
-                    </div>
-                    <div class="rating ${colorClass}">${ratingText}</div>
-                    ${isTFB ? `
-                        <div style="margin-top:20px;">
-                            <img src="https://www.cfa.vic.gov.au/cdn-cgi/image/width=150,f=auto/assets/images/total-fire-ban-logo.png" 
-                                 alt="Total Fire Ban in Force" 
-                                 style="width:120px; height:auto; border: 2px solid white; border-radius: 50%;">
-                            <div style="color:red; font-weight:bold; margin-top:5px;">FIRE BAN IN FORCE</div>
-                        </div>` : ''}
-                </div>`;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>South West Fire Danger Dashboard</title>
+    <style>
+        body { 
+            background-color: black; 
+            color: white; 
+            font-family: 'Segoe UI', Roboto, Arial, sans-serif; 
+            padding: 40px; 
+            text-align: center; 
         }
-        document.getElementById('content').innerHTML = html;
-    } catch (err) {
-        console.error(err);
-        document.getElementById('content').innerHTML = "Unable to reach CFA. Check connection or try refreshing.";
-    }
-}
+        
+        .header { 
+            font-size: 2.5em; 
+            font-weight: bold; 
+            margin-bottom: 30px; 
+            border-bottom: 2px solid #333; 
+            padding-bottom: 10px; 
+        }
 
-fetchFeed();
-setInterval(fetchFeed, 1800000);
+        .update-time {
+            font-size: 0.9em;
+            color: #888;
+            margin-bottom: 40px;
+        }
+
+        .container { 
+            display: flex; 
+            justify-content: center; 
+            gap: 40px; 
+            flex-wrap: wrap;
+        }
+
+        .day-column { 
+            flex: 1; 
+            min-width: 250px; 
+            max-width: 300px;
+            background: #111;
+            padding: 20px;
+            border-radius: 15px;
+            border: 1px solid #222;
+        }
+
+        .label { 
+            font-size: 1.8em; 
+            margin-bottom: 20px; 
+            color: #ccc; 
+            font-weight: 300;
+        }
+
+        .map-box { 
+            width: 180px; 
+            height: 120px; 
+            margin: 0 auto 20px auto; 
+            border-radius: 10px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+            font-size: 1em; 
+            font-weight: bold; 
+            color: black;
+            text-shadow: 0px 0px 2px rgba(255,255,255,0.5);
+        }
+
+        .rating { 
+            font-size: 1.8em; 
+            font-weight: 900; 
+            letter-spacing: 1px; 
+            text-transform: uppercase; 
+            min-height: 2.2em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* TFB Logo Styling */
+        .tfb-container {
+            margin-top: 25px;
+            padding: 15px;
+            background-color: #d1190d; /* CFA Red */
+            border: 2px solid white;
+            border-radius: 10px;
+            animation: pulse 2s infinite;
+        }
+
+        .tfb-label {
+            font-weight: 900;
+            font-size: 1.1em;
+            color: white;
+            margin-top: 8px;
+            line-height: 1.2;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.03); }
+            100% { transform: scale(1); }
+        }
+
+        /* CFA Official Colors */
+        .MODERATE { color: #78be20; } 
+        .HIGH { color: #ffb81c; } 
+        .EXTREME { color: #e03c31; } 
+        .CATASTROPHIC { color: white; background-color: #000; border: 2px solid red; }
+
+        .bg-MODERATE { background-color: #78be20; }
+        .bg-HIGH { background-color: #ffb81c; }
+        .bg-EXTREME { background-color: #e03c31; }
+        .bg-CATASTROPHIC { background-color: #000; border: 2px solid white; }
+    </style>
+</head>
+<body>
+
+    <div class="header">South West Fire Danger</div>
+    <div id="last-update" class="update-time">Initializing...</div>
+    
+    <div id="content" class="container">
+        Loading live CFA data...
+    </div>
+
+    <script>
+        async function fetchFeed() {
+            const rssUrl = "https://www.cfa.vic.gov.au/cfa/rssfeed/southwest-firedistrict_rss.xml";
+            const proxy = "https://corsproxy.io/?" + encodeURIComponent(rssUrl);
+            
+            try {
+                const response = await fetch(proxy);
+                if (!response.ok) throw new Error('Network response was not ok');
+                const text = await response.text();
+                const parser = new DOMParser();
+                const xml = parser.parseFromString(text, "text/xml");
+                const items = xml.querySelectorAll("item");
+                
+                let html = '';
+                const labels = ["Today", "Tomorrow", "Overmorrow"];
+                
+                for (let i = 0; i < 3; i++) {
+                    const description = items[i].querySelector("description").textContent.toUpperCase();
+                    const ratingText = description.replace("SOUTH WEST:", "").trim();
+                    
+                    // Logic to detect Total Fire Ban
+                    const isTFB = description.includes("TOTAL FIRE BAN") || description.includes("TFB");
+
+                    let colorClass = "HIGH";
+                    if (ratingText.includes("EXTREME")) colorClass = "EXTREME";
+                    else if (ratingText.includes("MODERATE")) colorClass = "MODERATE";
+                    else if (ratingText.includes("CATASTROPHIC")) colorClass = "CATASTROPHIC";
+                    else if (ratingText.includes("NO RATING")) colorClass = "MODERATE";
+
+                    html += `
+                        <div class="day-column">
+                            <div class="label">${labels[i]}</div>
+                            <div class="map-box bg-${colorClass}">
+                                SOUTH WEST
+                            </div>
+                            <div class="rating ${colorClass}">${ratingText}</div>
+                            
+                            ${isTFB ? `
+                                <div class="tfb-container">
+                                    <img src="https://www.cfa.vic.gov.au/assets/images/total-fire-ban-logo.png" 
+                                         alt="TFB Logo" width="80">
+                                    <div class="tfb-label">TOTAL FIRE BAN<br>IN FORCE</div>
+                                </div>
+                            ` : ''}
+                        </div>`;
+                }
+                
+                document.getElementById('content').innerHTML = html;
+                document.getElementById('last-update').innerText = "Last Updated: " + new Date().toLocaleTimeString();
+                
+            } catch (err) {
+                console.error(err);
+                document.getElementById('content').innerHTML = "Unable to reach CFA. Check connection or try refreshing.";
+            }
+        }
+
+        // Initial fetch
+        fetchFeed();
+        
+        // Refresh every 30 minutes
+        setInterval(fetchFeed, 1800000);
+    </script>
+</body>
+</html>
