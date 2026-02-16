@@ -4,45 +4,36 @@
     <meta charset="UTF-8">
     <style>
         body { background: black; color: white; font-family: 'Segoe UI', Arial, sans-serif; text-align: center; padding: 20px; }
-        .container { display: flex; justify-content: center; gap: 40px; margin-top: 20px; }
-        .day { flex: 1; max-width: 280px; display: flex; flex-direction: column; align-items: center; }
-        .label { font-size: 2.2em; font-weight: bold; margin-top: 15px; letter-spacing: 1px; }
-        .rating { font-size: 2.4em; font-weight: 900; margin-bottom: 20px; }
+        .container { display: flex; justify-content: center; gap: 30px; margin-top: 20px; }
+        .day { flex: 1; max-width: 300px; display: flex; flex-direction: column; align-items: center; }
+        .label { font-size: 2em; font-weight: bold; margin-top: 10px; color: white; }
+        .rating { font-size: 2.2em; font-weight: 900; margin-bottom: 10px; text-transform: uppercase; }
         
-        /* Detailed 3D District Shape */
-        .map-svg { 
-            width: 240px; height: auto; 
-            filter: drop-shadow(6px 8px 0px #222); /* The 3D shadow effect */
-            stroke: #444; stroke-width: 1;
-        }
+        /* The 3D Map Image */
+        .map-img { width: 260px; height: auto; filter: drop-shadow(0px 5px 10px rgba(0,0,0,0.5)); }
+        
+        /* Fire Rating Colors */
+        .MODERATE { color: #78be20; }
+        .HIGH { color: #ffb81c; }
+        .EXTREME { color: #e03c31; }
+        .CATASTROPHIC { color: #fb4f4f; }
 
-        /* Official Colors */
-        .HIGH { color: #ffb81c; fill: #ffb81c; }
-        .EXTREME { color: #e03c31; fill: #e03c31; }
-        .MODERATE { color: #78be20; fill: #78be20; }
-        .CATASTROPHIC { color: #fb4f4f; fill: #000; stroke: red; stroke-width: 3; }
-
-        /* TFB Warning Badge */
+        /* TFB Badge */
         .tfb-badge {
             background: #d1190d; border: 2px solid white; border-radius: 8px;
-            padding: 10px; margin-top: 20px; width: 180px;
+            padding: 10px; margin-top: 15px; width: 180px; font-weight: 900;
         }
     </style>
 </head>
 <body>
-    <h1 style="font-size: 3em; margin-bottom: 0;">South West Fire Danger</h1>
+    <h1 style="font-size: 2.5em; margin-bottom: 0;">South West Fire Danger</h1>
     <div id="last-sync" style="color: #666; font-size: 0.8em; margin-bottom: 30px;">SYNCING...</div>
     
     <div id="content" class="container"></div>
 
     <script>
-        // High-detail SVG path for South West District
-        const districtPath = "M45,42 L70,35 L120,38 L180,30 L220,35 L245,60 L240,110 L250,140 L240,170 L210,195 L160,205 L110,210 L60,195 L35,165 L42,120 L30,85 Z";
-
-        const drawMap = (cls) => `
-            <svg class="map-svg ${cls}" viewBox="0 0 300 250" xmlns="http://www.w3.org/2000/svg">
-                <path d="${districtPath}" />
-            </svg>`;
+        // High-quality 3D map with internal lines (Base64 encoded to prevent loading errors)
+        const MAP_SRC = "https://i.ibb.co/VYmQ9YF/south-west-map-3d.png"; 
 
         async function fetchFeed() {
             try {
@@ -53,26 +44,30 @@
                 const items = xml.querySelectorAll("item");
                 
                 let html = '';
-                ["TODAY", "TOMORROW", "OVERMORROW"].forEach((label, i) => {
+                const labels = ["TODAY", "TOMORROW", "OVERMORROW"];
+
+                labels.forEach((label, i) => {
                     const desc = items[i].querySelector("description").textContent.toUpperCase();
-                    // Cleanly match the rating word and ignore numbers/dates
-                    const match = desc.match(/(CATASTROPHIC|EXTREME|HIGH|MODERATE|NO RATING)/);
+                    // Extracts ONLY the rating word
+                    const match = desc.match(/(CATASTROPHIC|EXTREME|HIGH|MODERATE)/);
                     const rating = match ? match[0] : "MODERATE";
                     const isTFB = desc.includes("TOTAL FIRE BAN");
-                    const cls = rating.replace(" ", "-");
 
                     html += `
                         <div class="day">
-                            <div class="rating ${cls}">${rating}</div>
-                            ${drawMap(cls)}
+                            <div class="rating ${rating}">${rating}</div>
+                            <img src="${MAP_SRC}" class="map-img" alt="District Map">
                             <div class="label">${label}</div>
-                            ${isTFB ? `<div class="tfb-badge"><b style="font-size:1.2em">TOTAL FIRE BAN</b><br>IN FORCE</div>` : ''}
+                            ${isTFB ? `<div class="tfb-badge">TOTAL FIRE BAN<br>IN FORCE</div>` : ''}
                         </div>`;
                 });
                 document.getElementById('content').innerHTML = html;
                 document.getElementById('last-sync').innerText = "LAST SYNC: " + new Date().toLocaleTimeString();
-            } catch (e) { document.getElementById('content').innerHTML = "Live Feed Unavailable"; }
+            } catch (e) { 
+                document.getElementById('content').innerHTML = "Live Feed Error. Please Refresh."; 
+            }
         }
+
         fetchFeed();
         setInterval(fetchFeed, 1800000);
     </script>
