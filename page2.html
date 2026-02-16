@@ -5,62 +5,142 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>South West Fire Danger</title>
     <style>
-        body { background-color: black; color: white; font-family: 'Segoe UI', Arial, sans-serif; padding: 40px; text-align: center; }
-        .header { font-size: 2.5em; font-weight: bold; margin-bottom: 40px; border-bottom: 2px solid #333; padding-bottom: 10px; }
-        .container { display: flex; justify-content: center; gap: 30px; flex-wrap: wrap; }
-        .day-column { flex: 1; min-width: 220px; max-width: 280px; background: #111; padding: 20px; border-radius: 15px; border: 1px solid #222; }
-        .label { font-size: 1.4em; color: #aaa; margin-bottom: 5px; text-transform: uppercase; }
-        .date-sub { font-size: 0.9em; color: #666; margin-bottom: 15px; display: block; }
-        .map-img { width: 100%; height: auto; border-radius: 8px; margin-bottom: 15px; border: 1px solid #333; }
-        .rating-text { font-size: 1.8em; font-weight: 900; letter-spacing: 1px; }
+        body { 
+            background-color: black; 
+            color: white; 
+            font-family: 'Segoe UI', Roboto, Arial, sans-serif; 
+            padding: 40px; 
+            text-align: center; 
+        }
+        .header { 
+            font-size: 2.5em; 
+            font-weight: bold; 
+            margin-bottom: 50px; 
+            border-bottom: 2px solid #333; 
+            padding-bottom: 10px; 
+        }
+        .container { 
+            display: flex; 
+            justify-content: center; 
+            gap: 40px; 
+            flex-wrap: wrap; 
+        }
+        .day-column { 
+            flex: 1; 
+            min-width: 200px; 
+            max-width: 300px; 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .label { 
+            font-size: 1.8em; 
+            margin-bottom: 20px; 
+            color: #ccc; 
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        
+        /* Map Image Styling */
+        .map-img { 
+            width: 100%; 
+            max-width: 250px; 
+            height: auto; 
+            border-radius: 12px; 
+            margin-bottom: 15px;
+            border: 1px solid #444;
+            transition: transform 0.3s ease;
+        }
 
-        /* Rating Colors */
-        .MODERATE { color: #78be20; } 
-        .HIGH { color: #ffb81c; } 
-        .EXTREME { color: #e03c31; } 
-        .CATASTROPHIC { color: #ffffff; text-shadow: 0 0 8px red; }
-        .NO-RATING { color: #666; }
+        /* Total Fire Ban Badge (Only shows if TFB is active) */
+        .tfb-badge {
+            background-color: #e03c31;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 0.9em;
+            margin-top: 10px;
+            animation: pulse 2s infinite;
+        }
 
-        .loading { font-style: italic; color: #888; margin-top: 50px; }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+
+        #error-msg { color: #888; margin-top: 20px; font-style: italic; }
     </style>
 </head>
 <body>
 
     <div class="header">South West Fire Danger</div>
-    <div id="content" class="container"><p class="loading">Connecting to CFA Live Feed...</p></div>
+    
+    <div id="content" class="container">
+        <p>Loading live CFA data...</p>
+    </div>
 
     <script>
         async function fetchFeed() {
             const rssUrl = "https://www.cfa.vic.gov.au/cfa/rssfeed/southwest-firedistrict_rss.xml";
-            // Switched to allorigins proxy for better reliability
-            const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(rssUrl)}`;
+            const proxy = "https://corsproxy.io/?" + encodeURIComponent(rssUrl);
             
             try {
                 const response = await fetch(proxy);
-                if (!response.ok) throw new Error('Proxy unreachable');
-                const data = await response.json();
+                if (!response.ok) throw new Error('Network response was not ok');
                 
+                const text = await response.text();
                 const parser = new DOMParser();
-                const xml = parser.parseFromString(data.contents, "text/xml");
+                const xml = parser.parseFromString(text, "text/xml");
                 const items = xml.querySelectorAll("item");
                 
-                if (items.length === 0) throw new Error('No data in feed');
-
                 let html = '';
-                const labels = ["Today", "Tomorrow", "Overmorrow", "Day 4"];
+                const labels = ["Today", "Tomorrow", "Overmorrow"];
                 
+                // We only need the first 3 items (Today, Tomorrow, Overmorrow)
                 for (let i = 0; i < 3; i++) {
-                    const item = items[i];
-                    const fullText = item.querySelector("description").textContent.toUpperCase();
-                    const pubDate = item.querySelector("title").textContent.split('-')[0].trim(); // Extract date from title
+                    if (!items[i]) break;
 
+                    const fullDescription = items[i].querySelector("description").textContent.trim().toUpperCase();
+                    
+                    // 1. Determine which image to show based on keywords
                     let imgName = "norating.gif";
-                    let rating = "NO RATING";
-                    let colorClass = "NO-RATING";
+                    let altText = "No Rating";
 
-                    if (fullText.includes("CATASTROPHIC")) { rating = "CATASTROPHIC"; imgName = "catastrophic.gif"; colorClass = "CATASTROPHIC"; }
-                    else if (fullText.includes("EXTREME")) { rating = "EXTREME"; imgName = "extreme.gif"; colorClass = "EXTREME"; }
-                    else if (fullText.includes("HIGH")) { rating = "HIGH"; imgName = "high.gif"; colorClass = "HIGH"; }
-                    else if (fullText.includes("MODERATE")) { rating = "MODERATE"; imgName = "moderate.gif"; colorClass = "MODERATE"; }
+                    if (fullDescription.includes("CATASTROPHIC")) { imgName = "catastrophic.gif"; altText = "Catastrophic"; }
+                    else if (fullDescription.includes("EXTREME")) { imgName = "extreme.gif"; altText = "Extreme"; }
+                    else if (fullDescription.includes("HIGH")) { imgName = "high.gif"; altText = "High"; }
+                    else if (fullDescription.includes("MODERATE")) { imgName = "moderate.gif"; altText = "Moderate"; }
 
-                    const imgUrl = `https://www.cfa.vic.
+                    // 2. Check for Total Fire Ban (TFB)
+                    // If the text says "IS A DAY OF TOTAL FIRE BAN", we show the badge
+                    const isTFB = fullDescription.includes("IS A DAY OF TOTAL FIRE BAN") || 
+                                  fullDescription.includes("IS NOT CURRENTLY A DAY") === false && fullDescription.includes("TOTAL FIRE BAN");
+
+                    const imgUrl = `https://www.cfa.vic.gov.au/cfa/images/fdr/southwest/${imgName}`;
+
+                    html += `
+                        <div class="day-column">
+                            <div class="label">${labels[i]}</div>
+                            <img src="${imgUrl}" alt="${altText}" class="map-img">
+                            ${isTFB ? '<div class="tfb-badge">TOTAL FIRE BAN</div>' : ''}
+                        </div>`;
+                }
+                
+                document.getElementById('content').innerHTML = html;
+
+            } catch (err) {
+                console.error(err);
+                document.getElementById('content').innerHTML = "<div id='error-msg'>Unable to reach CFA data. Please check your connection.</div>";
+            }
+        }
+
+        // Initial fetch
+        fetchFeed();
+        
+        // Refresh every 30 minutes
+        setInterval(fetchFeed, 1800000); 
+    </script>
+</body>
+</html>
