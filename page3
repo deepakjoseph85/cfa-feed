@@ -1,148 +1,64 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>South West Fire Danger</title>
-    <style>
-        body { 
-            background-color: black; 
-            color: white; 
-            font-family: 'Segoe UI', Roboto, Arial, sans-serif; 
-            padding: 40px; 
-            text-align: center; 
-        }
-        .header { 
-            font-size: 2.5em; 
-            font-weight: bold; 
-            margin-bottom: 50px; 
-            border-bottom: 2px solid #333; 
-            padding-bottom: 10px; 
-        }
-        .container { 
-            display: flex; 
-            justify-content: center; 
-            gap: 40px; 
-            flex-wrap: wrap; 
-        }
-        .day-column { 
-            flex: 1; 
-            min-width: 200px; 
-            max-width: 300px; 
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        .label { 
-            font-size: 1.8em; 
-            margin-bottom: 20px; 
-            color: #ccc; 
-            text-transform: uppercase;
-            letter-spacing: 2px;
-        }
-        
-        /* Map Image Styling */
-        .map-img { 
-            width: 100%; 
-            max-width: 250px; 
-            height: auto; 
-            border-radius: 12px; 
-            margin-bottom: 15px;
-            border: 1px solid #444;
-            transition: transform 0.3s ease;
-        }
+    <meta charset="UTF-8">
+    <style>
+        body { 
+            background-color: black; 
+            color: white; 
+            font-family: 'Segoe UI', Arial, sans-serif; 
+            margin: 0; 
+            padding: 40px; 
+            display: flex; 
+            flex-direction: column;
+            align-items: center; 
+        }
+        .container { display: flex; gap: 60px; text-align: center; margin-bottom: 40px; }
+        
+        .day-header { margin-bottom: 20px; }
+        
+        .day-label { 
+            font-size: 1.6em; 
+            color: white; 
+            font-weight: bold;
+            text-transform: uppercase;
+            margin: 0;
+        }
 
-        /* Total Fire Ban Badge (Only shows if TFB is active) */
-        .tfb-badge {
-            background-color: #e03c31;
-            color: white;
-            padding: 5px 15px;
-            border-radius: 4px;
-            font-weight: bold;
-            font-size: 0.9em;
-            margin-top: 10px;
-            animation: pulse 2s infinite;
-        }
+        .day-date {
+            font-size: 1.1em;
+            color: #888;
+            margin-top: 4px;
+        }
 
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.7; }
-            100% { opacity: 1; }
-        }
+        .map-container img { 
+            width: 220px; 
+            height: auto; 
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
 
-        #error-msg { color: #888; margin-top: 20px; font-style: italic; }
-    </style>
-</head>
-<body>
+        .rating { 
+            font-size: 2em; 
+            font-weight: 900; 
+            text-transform: uppercase; 
+            letter-spacing: 1px;
+        }
 
-    <div class="header">South West Fire Danger</div>
-    
-    <div id="content" class="container">
-        <p>Loading live CFA data...</p>
-    </div>
-
-    <script>
-        async function fetchFeed() {
-            const rssUrl = "https://www.cfa.vic.gov.au/cfa/rssfeed/southwest-firedistrict_rss.xml";
-            const proxy = "https://corsproxy.io/?" + encodeURIComponent(rssUrl);
-            
-            try {
-                const response = await fetch(proxy);
-                if (!response.ok) throw new Error('Network response was not ok');
-                
-                const text = await response.text();
-                const parser = new DOMParser();
-                const xml = parser.parseFromString(text, "text/xml");
-                const items = xml.querySelectorAll("item");
-                
-                let html = '';
-                const labels = ["Today", "Tomorrow", "Overmorrow"];
-                
-                // We only need the first 3 items (Today, Tomorrow, Overmorrow)
-                for (let i = 0; i < 3; i++) {
-                    if (!items[i]) break;
-
-                    const fullDescription = items[i].querySelector("description").textContent.trim().toUpperCase();
-                    
-                    // 1. Determine which image to show based on keywords
-                    let imgName = "norating.gif";
-                    let altText = "No Rating";
-
-                    if (fullDescription.includes("CATASTROPHIC")) { imgName = "catastrophic.gif"; altText = "Catastrophic"; }
-                    else if (fullDescription.includes("EXTREME")) { imgName = "extreme.gif"; altText = "Extreme"; }
-                    else if (fullDescription.includes("HIGH")) { imgName = "high.gif"; altText = "High"; }
-                    else if (fullDescription.includes("MODERATE")) { imgName = "moderate.gif"; altText = "Moderate"; }
-
-                    // 2. Check for Total Fire Ban (TFB)
-                    // If the text says "IS A DAY OF TOTAL FIRE BAN", we show the badge
-                    const isTFB = fullDescription.includes("IS A DAY OF TOTAL FIRE BAN") || 
-                                  fullDescription.includes("IS NOT CURRENTLY A DAY") === false && fullDescription.includes("TOTAL FIRE BAN");
-
-                    const imgUrl = `https://www.cfa.vic.gov.au/cfa/images/fdr/southwest/${imgName}`;
-
-                    html += `
-                        <div class="day-column">
-                            <div class="label">${labels[i]}</div>
-                            <img src="${imgUrl}" alt="${altText}" class="map-img">
-                            ${isTFB ? '<div class="tfb-badge">TOTAL FIRE BAN</div>' : ''}
-                        </div>`;
-                }
-                
-                document.getElementById('content').innerHTML = html;
-
-            } catch (err) {
-                console.error(err);
-                document.getElementById('content').innerHTML = "<div id='error-msg'>Unable to reach CFA data. Please check your connection.</div>";
-            }
-        }
-
-        // Initial fetch
-        fetchFeed();
-        
-        // Refresh every 30 minutes
-        setInterval(fetchFeed, 1800000); 
-    </script>
-</body>
-</html>
-
-Add the line to show the rating text 
+        /* Footer Line */
+        .footer {
+            border-top: 1px solid #333;
+            width: 80%;
+            padding-top: 15px;
+            color: #555;
+            font-size: 0.85em;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        /* CFA Official Color Palette */
+        .MODERATE { color: #78be20; } 
+        .HIGH { color: #ffb81c; } 
+        .EXTREME { color: #e03c31; } 
+        .CATASTROPHIC { color: white; background: red; padding: 0
