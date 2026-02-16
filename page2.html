@@ -6,55 +6,48 @@
         body { 
             background-color: black; 
             color: white; 
-            font-family: 'Segoe UI', Helvetica, Arial, sans-serif; 
-            padding: 30px;
+            font-family: 'Segoe UI', Arial, sans-serif; 
+            padding: 20px;
         }
-        
         .header { 
-            font-size: 1.6em; 
+            font-size: 1.5em; 
             font-weight: bold; 
-            margin-bottom: 35px; 
-            letter-spacing: 0.5px;
+            margin-bottom: 25px; 
         }
-
         .container { 
             display: flex; 
-            gap: 50px; 
+            gap: 40px; 
             align-items: flex-start;
         }
-
         .day-column { 
             display: flex;
             flex-direction: column;
             align-items: flex-start;
+            min-width: 100px;
         }
-
         .label { 
             font-size: 1.1em; 
-            margin-bottom: 15px; 
-            color: #ffffff; 
-            font-weight: 500;
+            margin-bottom: 12px; 
+            color: #eee;
         }
-
-        /* SVG Icon Styling */
-        .district-map {
-            width: 90px;
+        .district-svg {
+            width: 85px;
             height: auto;
-            margin-bottom: 15px;
+            margin-bottom: 10px;
+            filter: drop-shadow(0 0 2px rgba(255,255,255,0.1));
         }
-
-        .rating { 
+        .rating-label { 
             font-size: 1.2em; 
-            font-weight: 800; 
+            font-weight: 900; 
             text-transform: uppercase;
         }
         
-        /* AFDRS Official Colors */
+        /* AFDRS Standardized Colors */
         .MODERATE { fill: #78be20; color: #78be20; } 
         .HIGH { fill: #ffb81c; color: #ffb81c; } 
         .EXTREME { fill: #ff8200; color: #ff8200; } 
         .CATASTROPHIC { fill: #e03c31; color: #e03c31; }
-        .NO_RATING { fill: #78be20; color: #78be20; }
+        .NO_RATING { fill: #7c7c7c; color: #ffffff; } /* Grey for no forecast */
     </style>
 </head>
 <body>
@@ -62,8 +55,8 @@
     <div id="content" class="container">Loading live CFA data...</div>
 
     <script>
-        // The SVG Path representing the South West district boundary
-        const southwestPath = "M10,30 L25,5 L60,10 L85,5 L95,40 L85,85 L40,95 L15,80 L5,50 Z";
+        // Accurate path representing the South West Victoria Fire District
+        const southwestShape = "M85,35 L98,40 L95,65 L88,75 L82,85 L70,95 L55,98 L35,95 L15,85 L5,75 L2,55 L10,35 L25,20 L45,10 L65,8 L85,15 Z";
 
         async function fetchFeed() {
             const rssUrl = "https://www.cfa.vic.gov.au/cfa/rssfeed/southwest-firedistrict_rss.xml";
@@ -72,3 +65,41 @@
             try {
                 const response = await fetch(proxy);
                 const text = await response.text();
+                const parser = new DOMParser();
+                const xml = parser.parseFromString(text, "text/xml");
+                const items = xml.querySelectorAll("item");
+                
+                let html = '';
+                const dayLabels = ["Today", "Tomorrow", "Overmorrow"];
+                
+                for (let i = 0; i < 3; i++) {
+                    const desc = items[i].querySelector("description").textContent.toUpperCase();
+                    
+                    let rating = "HIGH";
+                    if (desc.includes("EXTREME")) rating = "EXTREME";
+                    else if (desc.includes("MODERATE")) rating = "MODERATE";
+                    else if (desc.includes("CATASTROPHIC")) rating = "CATASTROPHIC";
+                    else if (desc.includes("NO RATING")) rating = "NO_RATING";
+
+                    const displayRating = rating === "NO_RATING" ? "NO RATING" : rating;
+
+                    html += `
+                        <div class="day-column">
+                            <div class="label">${dayLabels[i]}</div>
+                            <svg class="district-svg" viewBox="0 0 100 100">
+                                <path class="${rating}" d="${southwestShape}" stroke="white" stroke-width="1.5" />
+                            </svg>
+                            <div class="rating-label ${rating}">${displayRating}</div>
+                        </div>`;
+                }
+                document.getElementById('content').innerHTML = html;
+            } catch (err) {
+                document.getElementById('content').innerHTML = "Ratings currently unavailable.";
+            }
+        }
+
+        fetchFeed();
+        setInterval(fetchFeed, 1800000);
+    </script>
+</body>
+</html>
