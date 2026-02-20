@@ -8,74 +8,143 @@
             color: white; 
             font-family: 'Segoe UI', Arial, sans-serif; 
             margin: 0; 
-            padding: 40px; 
-            display: flex; 
-            justify-content: center; 
+            padding: 20px;
         }
-        .container { display: flex; gap: 60px; text-align: center; }
+
+        /* Condensed Top Left Header */
+        .header {
+            font-size: 1.8em;
+            font-weight: 800;
+            text-transform: uppercase;
+            margin-bottom: 25px;
+            border-left: 4px solid #e03c31;
+            padding-left: 12px;
+            text-align: left;
+        }
+
+        /* Narrower Container */
+        .container { 
+            display: flex; 
+            justify-content: flex-start; 
+            gap: 30px;
+            text-align: center; 
+            flex-wrap: wrap;
+        }
         
+        .day-column {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 180px;
+        }
+
         .day-label { 
-            font-size: 1.6em; 
+            font-size: 1.2em; 
             color: #888; 
-            margin-bottom: 20px; 
+            margin-bottom: 10px; 
             font-weight: bold;
             text-transform: uppercase;
         }
 
         .map-container img { 
-            width: 220px; 
+            width: 100%;
             height: auto; 
             border-radius: 4px;
-            margin-bottom: 20px;
+            margin-bottom: 10px;
         }
 
         .rating { 
-            font-size: 2em; 
+            font-size: 1.5em; 
             font-weight: 900; 
             text-transform: uppercase; 
             letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+
+        /* Compact Total Fire Ban Badge */
+        .tfb-badge {
+            background-color: #e03c31;
+            color: white;
+            font-weight: bold;
+            padding: 4px 10px;
+            display: inline-block;
+            border-radius: 3px;
+            font-size: 0.8em;
+            letter-spacing: 0.5px;
+            animation: pulse-red 1.5s infinite ease-in-out;
+        }
+
+        @keyframes pulse-red {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.02); }
+            100% { opacity: 1; transform: scale(1); }
         }
         
+        .footer {
+            margin-top: 30px;
+            color: #444;
+            font-size: 0.7em;
+            text-transform: uppercase;
+            text-align: left;
+        }
+
         /* CFA Official Color Palette */
         .MODERATE { color: #78be20; } 
         .HIGH { color: #ffb81c; } 
         .EXTREME { color: #e03c31; } 
-        .CATASTROPHIC { color: white; background: red; padding: 0 10px; }
+        .CATASTROPHIC { color: white; background: red; padding: 0 5px; }
     </style>
 </head>
 <body>
+    <div class="header">South West Fire Danger Rating</div>
+    
     <div id="content" class="container">Loading...</div>
+
+    <div id="footer" class="footer"></div>
 
     <script>
         async function fetchFeed() {
-            const rssUrl = "https://www.cfa.vic.gov.au/cfa/rssfeed/southwest-firedistrict_rss.xml";
-            const proxy = "https://corsproxy.io/?" + encodeURIComponent(rssUrl);
+            // --- REPLACE THIS WITH YOUR CLOUDFLARE WORKER URL ---
+            const workerUrl = "https://cfa-rss-proxy.southern-grampians-shire-council.workers.dev";
+            // ---------------------------------------------------
+
             const labels = ["Today", "Tomorrow", "Overmorrow"];
             
             try {
-                const response = await fetch(proxy);
+                // Fetch directly from your Cloudflare worker
+                const response = await fetch(workerUrl);
                 const text = await response.text();
                 const parser = new DOMParser();
                 const xml = parser.parseFromString(text, "text/xml");
-                const items = xml.querySelectorAll("item");
                 
+                const pubDate = xml.querySelector("pubDate")?.textContent;
+                if (pubDate) {
+                    const localTime = new Date(pubDate).toLocaleString("en-AU", { 
+                        timeZone: "Australia/Melbourne", 
+                        dateStyle: "medium", 
+                        timeStyle: "short" 
+                    });
+                    document.getElementById('footer').innerHTML = `Last Updated: ${localTime} AEST`;
+                }
+
+                const items = xml.querySelectorAll("item");
                 let html = '';
+
                 for (let i = 0; i < 3; i++) {
+                    if (!items[i]) break;
                     const descContent = items[i].querySelector("description").textContent;
+                    const descUpper = descContent.toUpperCase();
                     
-                    // 1. Extract the map image URL
                     const imgMatch = descContent.match(/src="([^"]+)"/);
                     const imgSrc = imgMatch ? imgMatch[1] : "";
                     
-                    // 2. Extract and simplify the rating text
-                    let ratingText = descContent.replace(/<[^>]*>/g, '').trim().toUpperCase();
-                    
-                    // Clean up "NO RATING" or long descriptions to just the core word
-                    let displayRating = "HIGH"; // Default
-                    if (ratingText.includes("CATASTROPHIC")) displayRating = "CATASTROPHIC";
-                    else if (ratingText.includes("EXTREME")) displayRating = "EXTREME";
-                    else if (ratingText.includes("MODERATE")) displayRating = "MODERATE";
-                    else if (ratingText.includes("NO RATING")) displayRating = "MODERATE";
+                    let displayRating = "HIGH";
+                    if (descUpper.includes("CATASTROPHIC")) displayRating = "CATASTROPHIC";
+                    else if (descUpper.includes("EXTREME")) displayRating = "EXTREME";
+                    else if (descUpper.includes("MODERATE")) displayRating = "MODERATE";
+                    else if (descUpper.includes("NO RATING")) displayRating = "MODERATE";
+
+                    const isBan = descUpper.includes("TOTAL FIRE BAN") && !descUpper.includes("NOT CURRENTLY");
 
                     html += `
                         <div class="day-column">
@@ -84,16 +153,19 @@
                                 <img src="${imgSrc}" alt="Map">
                             </div>
                             <div class="rating ${displayRating}">${displayRating}</div>
+                            ${isBan ? '<div class="tfb-badge">TOTAL FIRE BAN</div>' : ''}
                         </div>`;
                 }
                 document.getElementById('content').innerHTML = html;
             } catch (err) {
-                document.getElementById('content').innerHTML = "Feed Offline";
+                console.error(err);
+                document.getElementById('content').innerHTML = "Feed Offline - Check Worker URL";
             }
         }
 
         fetchFeed();
-        setInterval(fetchFeed, 1800000);
+        // Refresh every 30 minutes
+        setInterval(fetchFeed, 1800000); 
     </script>
 </body>
 </html>
