@@ -127,35 +127,51 @@
                     document.getElementById('footer').innerHTML = `Last Updated: ${localTime} AEST`;
                 }
 
-                const items = xml.querySelectorAll("item");
-                let html = '';
+// ... inside fetchFeed() ...
 
-                for (let i = 0; i < 3; i++) {
-                    if (!items[i]) break;
-                    const descContent = items[i].querySelector("description").textContent;
-                    const descUpper = descContent.toUpperCase();
-                    
-                    const imgMatch = descContent.match(/src="([^"]+)"/);
-                    const imgSrc = imgMatch ? imgMatch[1] : "";
-                    
-                    let displayRating = "HIGH";
-                    if (descUpper.includes("CATASTROPHIC")) displayRating = "CATASTROPHIC";
-                    else if (descUpper.includes("EXTREME")) displayRating = "EXTREME";
-                    else if (descUpper.includes("MODERATE")) displayRating = "MODERATE";
-                    else if (descUpper.includes("NO RATING")) displayRating = "NO RATING";
+const items = xml.querySelectorAll("item");
+let html = '';
 
-                    const isBan = descUpper.includes("TOTAL FIRE BAN") && !descUpper.includes("NOT CURRENTLY");
+for (let i = 0; i < 3; i++) {
+    if (!items[i]) break;
 
-                    html += `
-                        <div class="day-column">
-                            <div class="day-label">${labels[i]}</div>
-                            <div class="map-container">
-                                <img src="${imgSrc}" alt="Map">
-                            </div>
-                            <div class="rating ${displayRating}">${displayRating}</div>
-                            ${isBan ? '<div class="tfb-badge">TOTAL FIRE BAN</div>' : ''}
-                        </div>`;
-                }
+    // --- NEW DATE LOGIC ---
+    // This creates a date object for Today, then adds 'i' days to it
+    const forecastDate = new Date();
+    forecastDate.setDate(forecastDate.getDate() + i);
+    
+    // Formats the date to "Friday, 20 Feb"
+    const dateLabel = forecastDate.toLocaleDateString("en-AU", { 
+        weekday: 'long', 
+        day: 'numeric', 
+        month: 'short' 
+    });
+    // -----------------------
+
+    const descContent = items[i].querySelector("description").textContent;
+    const descUpper = descContent.toUpperCase();
+    
+    const imgMatch = descContent.match(/src="([^"]+)"/);
+    const imgSrc = imgMatch ? imgMatch[1] : "";
+    
+    let displayRating = "HIGH";
+    if (descUpper.includes("CATASTROPHIC")) displayRating = "CATASTROPHIC";
+    else if (descUpper.includes("EXTREME")) displayRating = "EXTREME";
+    else if (descUpper.includes("MODERATE")) displayRating = "MODERATE";
+    else if (descUpper.includes("NO RATING")) displayRating = "MODERATE";
+
+    const isBan = descUpper.includes("TOTAL FIRE BAN") && !descUpper.includes("NOT CURRENTLY");
+
+    html += `
+        <div class="day-column">
+            <div class="day-label">${dateLabel}</div> 
+            <div class="map-container">
+                <img src="${imgSrc}" alt="Map">
+            </div>
+            <div class="rating ${displayRating}">${displayRating}</div>
+            ${isBan ? '<div class="tfb-badge">TOTAL FIRE BAN</div>' : ''}
+        </div>`;
+       }
                 document.getElementById('content').innerHTML = html;
             } catch (err) {
                 console.error(err);
