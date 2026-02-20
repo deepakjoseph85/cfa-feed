@@ -8,15 +8,15 @@
             color: white; 
             font-family: 'Segoe UI', Arial, sans-serif; 
             margin: 0; 
-            padding: 20px; /* Reduced from 40px */
+            padding: 20px;
         }
 
         /* Condensed Top Left Header */
         .header {
-            font-size: 1.8em; /* Reduced from 2.2em */
+            font-size: 1.8em;
             font-weight: 800;
             text-transform: uppercase;
-            margin-bottom: 25px; /* Reduced from 40px */
+            margin-bottom: 25px;
             border-left: 4px solid #e03c31;
             padding-left: 12px;
             text-align: left;
@@ -26,7 +26,7 @@
         .container { 
             display: flex; 
             justify-content: flex-start; 
-            gap: 30px; /* Reduced gap from 60px */
+            gap: 30px;
             text-align: center; 
             flex-wrap: wrap;
         }
@@ -35,11 +35,11 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            width: 180px; /* Reduced from 220px */
+            width: 180px;
         }
 
         .day-label { 
-            font-size: 1.2em; /* Reduced from 1.6em */
+            font-size: 1.2em; 
             color: #888; 
             margin-bottom: 10px; 
             font-weight: bold;
@@ -47,14 +47,14 @@
         }
 
         .map-container img { 
-            width: 100%; /* Scales to the 180px column width */
+            width: 100%;
             height: auto; 
             border-radius: 4px;
             margin-bottom: 10px;
         }
 
         .rating { 
-            font-size: 1.5em; /* Reduced from 2em */
+            font-size: 1.5em; 
             font-weight: 900; 
             text-transform: uppercase; 
             letter-spacing: 1px;
@@ -66,10 +66,10 @@
             background-color: #e03c31;
             color: white;
             font-weight: bold;
-            padding: 4px 10px; /* Reduced padding */
+            padding: 4px 10px;
             display: inline-block;
             border-radius: 3px;
-            font-size: 0.8em; /* Reduced font size */
+            font-size: 0.8em;
             letter-spacing: 0.5px;
             animation: pulse-red 1.5s infinite ease-in-out;
         }
@@ -81,9 +81,9 @@
         }
         
         .footer {
-            margin-top: 30px; /* Reduced from 60px */
+            margin-top: 30px;
             color: #444;
-            font-size: 0.7em; /* Reduced from 0.8em */
+            font-size: 0.7em;
             text-transform: uppercase;
             text-align: left;
         }
@@ -104,12 +104,15 @@
 
     <script>
         async function fetchFeed() {
-            const rssUrl = "https://www.cfa.vic.gov.au/cfa/rssfeed/southwest-firedistrict_rss.xml";
-            const proxy = "https://corsproxy.io/?" + encodeURIComponent(rssUrl);
+            // --- REPLACE THIS WITH YOUR CLOUDFLARE WORKER URL ---
+            const workerUrl = "https://cfa-rss-proxy.southern-grampians-shire-council.workers.dev";
+            // ---------------------------------------------------
+
             const labels = ["Today", "Tomorrow", "Overmorrow"];
             
             try {
-                const response = await fetch(proxy);
+                // Fetch directly from your Cloudflare worker
+                const response = await fetch(workerUrl);
                 const text = await response.text();
                 const parser = new DOMParser();
                 const xml = parser.parseFromString(text, "text/xml");
@@ -155,11 +158,13 @@
                 }
                 document.getElementById('content').innerHTML = html;
             } catch (err) {
-                document.getElementById('content').innerHTML = "Feed Offline";
+                console.error(err);
+                document.getElementById('content').innerHTML = "Feed Offline - Check Worker URL";
             }
         }
 
         fetchFeed();
+        // Refresh every 30 minutes
         setInterval(fetchFeed, 1800000); 
     </script>
 </body>
